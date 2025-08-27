@@ -17,7 +17,7 @@ interface LoadingStep {
   completed: boolean
 }
 
-export default function LoadingSimulation({ isVisible, onCompleteAction }: LoadingSimulationProps) {
+export function LoadingSimulation({ isVisible, onCompleteAction }: LoadingSimulationProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const [steps, setSteps] = useState<LoadingStep[]>([
@@ -197,3 +197,5 @@ export default function LoadingSimulation({ isVisible, onCompleteAction }: Loadi
     </div>
   )
 }
+
+export default LoadingSimulation

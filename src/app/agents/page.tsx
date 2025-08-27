@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiClient, type Agent, type JobSearchResults } from '@/lib/api-production'
 import JobAnalysisResults from '@/components/JobAnalysisResults'
-import LoadingSimulation from '@/components/LoadingSimulation'
+// import LoadingSimulation from '@/components/LoadingSimulation'
 import { 
   ArrowLeft,
   Play,
@@ -758,11 +758,11 @@ export default function AgentsPage() {
         </div>
       )}
 
-      {/* Loading Simulation */}
-      <LoadingSimulation 
+      {/* Loading Simulation - Temporarily disabled */}
+      {/* <LoadingSimulation 
         isVisible={showLoadingSimulation}
         onCompleteAction={handleLoadingComplete}
-      />
+      /> */}
     </div>
   )
 }
