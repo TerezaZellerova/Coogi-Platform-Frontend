@@ -1,0 +1,486 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { apiClient, type Agent, type DashboardStats, type Campaign } from '@/lib/api'
+import { 
+  Users, 
+  TrendingUp, 
+  Briefcase, 
+  Activity, 
+  Play, 
+  Pause, 
+  Trash2, 
+  RefreshCw,
+  Mail,
+  ExternalLink,
+  Settings,
+  LogOut
+} from 'lucide-react'
+
+export default function Dashboard() {
+  const router = useRouter()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<DashboardStats>({
+    activeAgents: 0,
+    totalRuns: 0,
+    totalJobs: 0,
+    successRate: 0
+  })
+  
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [query, setQuery] = useState('')
+  const [hoursOld, setHoursOld] = useState('24')
+  const [customTags, setCustomTags] = useState('')
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  useEffect(() => {
+    checkAuthentication()
+  }, [])
+
+  const checkAuthentication = async () => {
+    try {
+      const authData = localStorage.getItem('coogiAuth')
+      if (!authData) {
+        router.push('/login')
+        return
+      }
+      
+      const authInfo = JSON.parse(authData)
+      if (!authInfo.token || !authInfo.user) {
+        router.push('/login')
+        return
+      }
+      
+      setIsAuthenticated(true)
+      await loadDashboardData()
+    } catch (error) {
+      console.error('Auth check error:', error)
+      router.push('/login')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await apiClient.logout()
+    router.push('/login')
+  }
+
+  const loadDashboardData = async () => {
+    try {
+      // Load data using API client
+      const [statsData, agentsData, campaignsData] = await Promise.all([
+        apiClient.getDashboardStats(),
+        apiClient.getAgents(),
+        apiClient.getCampaigns()
+      ])
+      
+      setStats(statsData)
+      setAgents(agentsData)
+      setCampaigns(campaignsData)
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+    }
+  }
+
+  const handleCreateAgent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!query.trim()) return
+
+    setActionLoading('create')
+    try {
+      const newAgent = await apiClient.startAgent(
+        query.trim(), 
+        parseInt(hoursOld), 
+        customTags.trim() || undefined
+      )
+      
+      setAgents(prev => [newAgent, ...prev])
+      setQuery('')
+      setCustomTags('')
+      
+      // Reload stats
+      const newStats = await apiClient.getDashboardStats()
+      setStats(newStats)
+    } catch (error) {
+      console.error('Error creating agent:', error)
+      alert('Failed to create agent. Please try again.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleAgentAction = async (agentId: string, action: 'pause' | 'resume' | 'delete') => {
+    setActionLoading(agentId)
+    try {
+      if (action === 'delete') {
+        await apiClient.deleteAgent(agentId)
+        setAgents(prev => prev.filter(agent => agent.id !== agentId))
+      } else {
+        const newStatus = action === 'pause' ? 'paused' : 'running'
+        await apiClient.updateAgent(agentId, { status: newStatus as any })
+        setAgents(prev => prev.map(agent => 
+          agent.id === agentId ? { ...agent, status: newStatus as any } : agent
+        ))
+      }
+      
+      // Reload stats
+      const newStats = await apiClient.getDashboardStats()
+      setStats(newStats)
+    } catch (error) {
+      console.error(`Error performing ${action} on agent:`, error)
+      alert(`Failed to ${action} agent. Please try again.`)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const getStatusBadge = (status: Agent['status']) => {
+    const variants = {
+      running: 'default',
+      paused: 'secondary',
+      completed: 'outline',
+      failed: 'destructive'
+    }
+    return <Badge variant={variants[status] as any}>{status}</Badge>
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold text-sm">C</span>
+          </div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      {/* Header */}
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">C</span>
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                COOGI Dashboard
+              </h1>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Agents</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.activeAgents}</div>
+              <p className="text-xs text-muted-foreground">
+                Currently searching for leads
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Runs</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalRuns}</div>
+              <p className="text-xs text-muted-foreground">
+                Agent searches completed
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Jobs Found</CardTitle>
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalJobs.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">
+                Total job opportunities
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.successRate}%</div>
+              <p className="text-xs text-muted-foreground">
+                Email verification rate
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <Tabs defaultValue="agents" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="agents">Agent Management</TabsTrigger>
+            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+            <TabsTrigger value="leads">Lead Database</TabsTrigger>
+          </TabsList>
+
+          {/* Agents Tab */}
+          <TabsContent value="agents" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Agent Creator */}
+              <Card className="lg:col-span-1">
+                <CardHeader>
+                  <CardTitle>Create New Agent</CardTitle>
+                  <CardDescription>
+                    Start a new lead generation search
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleCreateAgent} className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="query" className="text-sm font-medium">
+                        Search Query
+                      </label>
+                      <Input
+                        id="query"
+                        placeholder="e.g., software engineer, nurse, lawyer"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="hoursOld" className="text-sm font-medium">
+                        Jobs from last
+                      </label>
+                      <select
+                        id="hoursOld"
+                        value={hoursOld}
+                        onChange={(e) => setHoursOld(e.target.value)}
+                        className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                      >
+                        <option value="1">1 hour</option>
+                        <option value="24">24 hours</option>
+                        <option value="168">1 week</option>
+                        <option value="720">1 month</option>
+                      </select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="customTags" className="text-sm font-medium">
+                        Custom Tags (optional)
+                      </label>
+                      <Input
+                        id="customTags"
+                        placeholder="e.g., urgent, high-priority"
+                        value={customTags}
+                        onChange={(e) => setCustomTags(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Comma-separated tags for lead organization
+                      </p>
+                    </div>
+                    
+                    <Button type="submit" className="w-full" disabled={actionLoading === 'create'}>
+                      <Play className="w-4 h-4 mr-2" />
+                      {actionLoading === 'create' ? 'Launching...' : 'Launch Agent'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Active Agents */}
+              <Card className="lg:col-span-2">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Active Agents</CardTitle>
+                    <CardDescription>
+                      Monitor and manage your search agents
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={loadDashboardData}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {agents.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        No active agents. Create a new agent to get started.
+                      </p>
+                    ) : (
+                      agents.map((agent) => (
+                        <div
+                          key={agent.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h4 className="font-medium">{agent.query}</h4>
+                              {getStatusBadge(agent.status)}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Jobs: {agent.total_jobs_found || 0} • Emails: {agent.total_emails_found || 0}
+                              {agent.custom_tags && (
+                                <span className="ml-2 text-purple-600">
+                                  Tags: {agent.custom_tags}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            {agent.status === 'running' ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAgentAction(agent.id, 'pause')}
+                                disabled={actionLoading === agent.id}
+                              >
+                                <Pause className="w-4 h-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAgentAction(agent.id, 'resume')}
+                                disabled={actionLoading === agent.id}
+                              >
+                                <Play className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAgentAction(agent.id, 'delete')}
+                              disabled={actionLoading === agent.id}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Campaigns Tab */}
+          <TabsContent value="campaigns" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Mail className="w-5 h-5" />
+                    <span>Instantly.ai Campaigns</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Manage your email outreach campaigns
+                  </CardDescription>
+                </div>
+                <Button variant="outline" onClick={loadDashboardData}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Campaign Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Leads</TableHead>
+                      <TableHead>Open Rate</TableHead>
+                      <TableHead>Reply Rate</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {campaigns.map((campaign) => (
+                      <TableRow key={campaign.id}>
+                        <TableCell className="font-medium">{campaign.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
+                            {campaign.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{campaign.leads_count}</TableCell>
+                        <TableCell>{campaign.open_rate}%</TableCell>
+                        <TableCell>{campaign.reply_rate}%</TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm">
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Leads Tab */}
+          <TabsContent value="leads" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Lead Database</CardTitle>
+                <CardDescription>
+                  All generated leads from your search agents
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-muted-foreground py-8">
+                  Lead management interface coming soon...
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  )
+}
