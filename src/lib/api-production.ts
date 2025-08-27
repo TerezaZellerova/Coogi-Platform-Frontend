@@ -149,6 +149,13 @@ class ApiClient {
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
+    // Check if we're on the client side
+    if (typeof window === 'undefined') {
+      return {
+        'Content-Type': 'application/json'
+      }
+    }
+    
     const authData = localStorage.getItem('coogiAuth')
     if (authData) {
       try {
@@ -220,13 +227,15 @@ class ApiClient {
         throw new Error(data.message || 'Login failed')
       }
 
-      // Store auth data in localStorage
+      // Store auth data in localStorage (only on client side)
       const authData = {
         token: data.token,
         user: data.user,
         loginTime: new Date().toISOString()
       }
-      localStorage.setItem('coogiAuth', JSON.stringify(authData))
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('coogiAuth', JSON.stringify(authData))
+      }
       
       return authData
     } catch (error) {
@@ -241,11 +250,17 @@ class ApiClient {
   }
 
   async logout() {
-    localStorage.removeItem('coogiAuth')
-    localStorage.removeItem('token') // Also remove old demo token if exists
+    // Check if we're on the client side
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('coogiAuth')
+      localStorage.removeItem('token') // Also remove old demo token if exists
+    }
   }
 
   isAuthenticated(): boolean {
+    // Check if we're on the client side
+    if (typeof window === 'undefined') return false
+    
     const authData = localStorage.getItem('coogiAuth')
     if (!authData) return false
     
@@ -258,6 +273,9 @@ class ApiClient {
   }
 
   getCurrentUser() {
+    // Check if we're on the client side
+    if (typeof window === 'undefined') return null
+    
     const authData = localStorage.getItem('coogiAuth')
     if (!authData) return null
     

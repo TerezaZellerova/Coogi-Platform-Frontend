@@ -62,6 +62,9 @@ export default function AgentsPage() {
   })
 
   useEffect(() => {
+    // Only check authentication on client side
+    if (typeof window === 'undefined') return
+    
     if (!apiClient.isAuthenticated()) {
       router.push('/login')
       return
