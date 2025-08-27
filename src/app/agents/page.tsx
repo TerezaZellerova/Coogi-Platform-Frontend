@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { apiClient, type Agent, type JobSearchResults } from '@/lib/api-production'
+import { apiClient, type Agent, type JobSearchResults, type ProgressiveAgent } from '@/lib/api-production'
 import JobAnalysisResults from '@/components/JobAnalysisResults'
-// import LoadingSimulation from '@/components/LoadingSimulation'
+import LoadingSimulation from '@/components/LoadingSimulation'
+import { ProgressiveAgentCard } from '@/components/ProgressiveAgentCard'
+import { NotificationSystem, useNotifications } from '@/components/NotificationSystem'
 import { 
   ArrowLeft,
   Play,
@@ -49,6 +51,37 @@ export default function AgentsPage() {
   // Loading simulation state
   const [showLoadingSimulation, setShowLoadingSimulation] = useState(false)
   const [forceComplete, setForceComplete] = useState(false)
+  
+  // Add results persistence
+  const [agentResults, setAgentResults] = useState<Record<string, JobSearchResults>>({})
+
+  // Progressive agents state
+  const [progressiveAgents, setProgressiveAgents] = useState<ProgressiveAgent[]>([])
+  const [useProgressiveMode, setUseProgressiveMode] = useState(true) // Default to progressive mode
+
+  // Notification system
+  const { 
+    notifications, 
+    dismissNotification, 
+    notifySuccess, 
+    notifyError, 
+    notifyStageComplete,
+    notifyInfo 
+  } = useNotifications()
+
+  // Load stored results from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('agentResults')
+      if (stored) {
+        try {
+          setAgentResults(JSON.parse(stored))
+        } catch (error) {
+          console.error('Error loading stored results:', error)
+        }
+      }
+    }
+  }, [])
 
   // New agent form
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -89,8 +122,6 @@ export default function AgentsPage() {
     if (!newAgent.query.trim()) return
 
     setActionLoading('create')
-    setShowLoadingSimulation(true)
-    setForceComplete(false)
     
     try {
       // Construct enhanced query string with location and company size
@@ -110,25 +141,141 @@ export default function AgentsPage() {
         }
       }
       
-      const response = await apiClient.createAgent(
-        enhancedQuery,
-        parseInt(newAgent.hoursOld),
-        newAgent.customTags.trim() || undefined
-      )
+      if (useProgressiveMode) {
+        // Create progressive agent for instant LinkedIn results
+        const response = await apiClient.createProgressiveAgent(
+          enhancedQuery,
+          parseInt(newAgent.hoursOld),
+          newAgent.customTags.trim() || undefined
+        )
+        
+        // Add to progressive agents list
+        setProgressiveAgents(prev => [response.agent, ...prev])
+        
+        // Notify user of successful creation
+        notifySuccess(
+          'Agent Created!', 
+          'Your agent is starting to fetch LinkedIn jobs...',
+          response.agent.id
+        )
+        
+        // Track stage completion for notifications
+        let previousStages = new Set<string>()
+        
+        // Start polling for updates with error handling
+        const cleanupPolling = apiClient.pollProgressiveAgent(
+          response.agent.id,
+          (updatedAgent) => {
+            setProgressiveAgents(prev => 
+              prev.map(agent => agent.id === updatedAgent.id ? updatedAgent : agent)
+            )
+            
+            // Check for newly completed stages
+            Object.entries(updatedAgent.stages).forEach(([stageName, stage]) => {
+              if (stage.status === 'completed' && !previousStages.has(stageName)) {
+                previousStages.add(stageName)
+                
+                const stageLabels: Record<string, string> = {
+                  linkedin_fetch: 'LinkedIn Jobs',
+                  other_boards: 'Other Job Boards',
+                  contact_enrichment: 'Contact Discovery',
+                  campaign_creation: 'Campaign Creation'
+                }
+                
+                notifyStageComplete(
+                  `${stageLabels[stageName] || stageName} Complete!`,
+                  `Found ${stage.results_count} results`,
+                  updatedAgent.id
+                )
+              }
+            })
+          },
+          (completedAgent) => {
+            setProgressiveAgents(prev => 
+              prev.map(agent => agent.id === completedAgent.id ? completedAgent : agent)
+            )
+            
+            notifySuccess(
+              'Agent Completed!',
+              `All stages finished with ${completedAgent.staged_results.total_jobs} total jobs found`,
+              completedAgent.id
+            )
+            
+            console.log('✅ Progressive agent completed:', completedAgent.id)
+          },
+          (error) => {
+            console.error('❌ Progressive agent polling error:', error)
+            notifyError(
+              'Agent Connection Error',
+              error,
+              response.agent.id
+            )
+          }
+        )
+        
+        console.log('🚀 Progressive agent created:', response.agent.id)
+        
+      } else {
+        // Use legacy mode with loading simulation
+        setShowLoadingSimulation(true)
+        setForceComplete(false)
+        
+        notifyInfo(
+          'Creating Agent',
+          'Preparing legacy agent with full processing...'
+        )
+        
+        const response = await apiClient.createAgent(
+          enhancedQuery,
+          parseInt(newAgent.hoursOld),
+          newAgent.customTags.trim() || undefined
+        )
+        
+        // Force loading simulation to complete when API finishes
+        setForceComplete(true)
+        
+        // Store the analysis results both in state and localStorage
+        setAnalysisResults(response.results)
+        
+        // Persist results for this agent
+        const newAgentResults = {
+          ...agentResults,
+          [response.agent.id]: response.results
+        }
+        setAgentResults(newAgentResults)
+        
+        // Save to localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('agentResults', JSON.stringify(newAgentResults))
+        }
+        
+        // Add just the agent to the list
+        setAgents(prev => [response.agent, ...prev])
+        
+        notifySuccess(
+          'Legacy Agent Created!',
+          `Analysis complete with ${response.results.jobs_found} jobs found`,
+          response.agent.id
+        )
+        
+        console.log('✅ Legacy agent created successfully:', response.agent.id)
+      }
       
-      // Force loading simulation to complete when API finishes
-      setForceComplete(true)
-      
-      // Store the analysis results
-      setAnalysisResults(response.results)
-      
-      // Add just the agent to the list
-      setAgents(prev => [response.agent, ...prev])
       setNewAgent({ query: '', hoursOld: '24', customTags: '', targetType: 'hiring_managers', companySize: 'all', locationFilter: '' })
       setShowCreateForm(false)
+      
     } catch (error) {
       console.error('Error creating agent:', error)
-      alert('Failed to create agent. Please try again.')
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      notifyError(
+        'Failed to Create Agent',
+        errorMessage
+      )
+      
+      // Reset loading states
+      setShowLoadingSimulation(false)
+      setForceComplete(false)
     } finally {
       setActionLoading(null)
     }
@@ -191,10 +338,13 @@ export default function AgentsPage() {
 
   const stats = getStatsOverview()
 
+  // Handle loading simulation completion
   const handleLoadingComplete = () => {
     setShowLoadingSimulation(false)
-    setShowResults(true)
-    setActionLoading(null)
+    // Show results after loading completes
+    if (analysisResults) {
+      setShowResults(true)
+    }
   }
 
   return (
@@ -545,6 +695,113 @@ export default function AgentsPage() {
           </Card>
         )}
 
+        {/* Mode Toggle */}
+        <div className="flex items-center justify-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg border">
+          <span className="text-sm font-medium">Agent Mode:</span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={useProgressiveMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseProgressiveMode(true)}
+              className={useProgressiveMode ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : ""}
+            >
+              ⚡ Progressive (Fast LinkedIn)
+            </Button>
+            <Button
+              variant={!useProgressiveMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseProgressiveMode(false)}
+            >
+              🔄 Legacy (Full Pipeline)
+            </Button>
+          </div>
+        </div>
+
+        {/* Agent Tabs */}
+        <Tabs defaultValue={useProgressiveMode ? "progressive" : "legacy"} value={useProgressiveMode ? "progressive" : "legacy"}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="progressive" onClick={() => setUseProgressiveMode(true)}>
+              Progressive Agents ({progressiveAgents.length})
+            </TabsTrigger>
+            <TabsTrigger value="legacy" onClick={() => setUseProgressiveMode(false)}>
+              Legacy Agents ({agents.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Progressive Agents Tab */}
+          <TabsContent value="progressive" className="space-y-6">
+            {progressiveAgents.length === 0 ? (
+              <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+                <CardContent className="text-center py-12">
+                  <Activity className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Progressive Agents</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Create a progressive agent to get LinkedIn results in 2-3 minutes
+                  </p>
+                  <Button 
+                    onClick={() => setShowCreateForm(true)} 
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Progressive Agent
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6">
+                {progressiveAgents.map((agent) => (
+                  <ProgressiveAgentCard 
+                    key={agent.id} 
+                    agent={agent}
+                    onUpdate={(updatedAgent) => {
+                      setProgressiveAgents(prev => 
+                        prev.map(a => a.id === updatedAgent.id ? updatedAgent : a)
+                      )
+                    }}
+                    onRemove={(agentId) => {
+                      setProgressiveAgents(prev => 
+                        prev.filter(a => a.id !== agentId)
+                      )
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Legacy Agents Tab */}
+          <TabsContent value="legacy" className="space-y-6">
+            {/* Filters and Search */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search agents..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-input bg-background rounded-md text-sm min-w-[120px]"
+                >
+                  <option value="all">All Status</option>
+                  <option value="running">Running</option>
+                  <option value="paused">Paused</option>
+                  <option value="completed">Completed</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {filteredAgents.length} of {agents.length} agents
+                </Badge>
+              </div>
+            </div>
+
         {/* Filters and Search */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex flex-col sm:flex-row gap-3 flex-1">
@@ -651,9 +908,12 @@ export default function AgentsPage() {
                       {agent.custom_tags && (
                         <div className="mt-3">
                           <div className="flex flex-wrap gap-2">
-                            {agent.custom_tags.split(',').map((tag, index) => (
+                            {(Array.isArray(agent.custom_tags) 
+                              ? agent.custom_tags 
+                              : agent.custom_tags.split(',')
+                            ).map((tag, index) => (
                               <span key={index} className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs rounded-full">
-                                {tag.trim()}
+                                {typeof tag === 'string' ? tag.trim() : tag}
                               </span>
                             ))}
                           </div>
@@ -666,19 +926,25 @@ export default function AgentsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            // For now, show a demo result - in a real app, you'd fetch the actual results
-                            setAnalysisResults({
-                              companies_analyzed: [
-                                {
-                                  company: "Demo Company",
-                                  job_title: "Software Engineer",
-                                  job_url: "https://example.com",
-                                  job_source: "LinkedIn (RapidAPI)",
-                                  has_ta_team: false,
-                                  contacts_found: 3,
-                                  top_contacts: [
-                                    { name: "John Doe", title: "Engineering Manager" }
-                                  ],
+                            // Check if we have stored results for this agent
+                            const storedResults = agentResults[agent.id]
+                            if (storedResults) {
+                              setAnalysisResults(storedResults)
+                              setShowResults(true)
+                            } else {
+                              // Show demo results if no stored results found
+                              setAnalysisResults({
+                                companies_analyzed: [
+                                  {
+                                    company: "Demo Company",
+                                    job_title: "Software Engineer", 
+                                    job_url: "https://example.com",
+                                    job_source: "LinkedIn (RapidAPI)",
+                                    has_ta_team: false,
+                                    contacts_found: 3,
+                                    top_contacts: [
+                                      { name: "John Doe", title: "Engineering Manager" }
+                                    ],
                                   recommendation: "TARGET - Great opportunity",
                                   timestamp: new Date().toISOString()
                                 }
@@ -689,6 +955,7 @@ export default function AgentsPage() {
                               timestamp: new Date().toISOString()
                             })
                             setShowResults(true)
+                            }
                           }}
                           className="border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400"
                         >
@@ -732,6 +999,8 @@ export default function AgentsPage() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </div>
       
       {/* Job Analysis Results Modal */}
@@ -758,11 +1027,18 @@ export default function AgentsPage() {
         </div>
       )}
 
-      {/* Loading Simulation - Temporarily disabled */}
-      {/* <LoadingSimulation 
+      {/* Loading Simulation */}
+      <LoadingSimulation 
         isVisible={showLoadingSimulation}
         onCompleteAction={handleLoadingComplete}
-      /> */}
+        forceComplete={forceComplete}
+      />
+
+      {/* Notification System */}
+      <NotificationSystem 
+        notifications={notifications}
+        onDismissAction={dismissNotification}
+      />
     </div>
   )
 }

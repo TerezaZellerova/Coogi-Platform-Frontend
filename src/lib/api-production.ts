@@ -1,5 +1,5 @@
 // Production API client for COOGI platform
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://coogi-backend.onrender.com'
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://coogi-backend-7yca.onrender.com'
 
 export interface Agent {
   id: string
@@ -9,7 +9,7 @@ export interface Agent {
   total_jobs_found: number
   total_emails_found: number
   hours_old?: number
-  custom_tags?: string
+  custom_tags?: string | string[] // Support both for backward compatibility
   batch_id?: string
   processed_cities?: number
   processed_companies?: number
@@ -60,7 +60,7 @@ export interface CompanyAnalysis {
   company: string
   job_title: string
   job_url: string
-  job_source: string  // This is the key field for showing job sources!
+  job_source?: string  // Make this optional since it can be undefined
   has_ta_team: boolean
   contacts_found: number
   top_contacts: Contact[]
@@ -125,7 +125,7 @@ export interface AgentTemplate {
   name: string
   query: string
   hours_old: number
-  custom_tags?: string
+  custom_tags?: string | string[] // Support both for backward compatibility
   description?: string
   created_at: string
   is_favorite?: boolean
@@ -139,6 +139,47 @@ export interface SystemHealth {
   cpu_usage: number
   active_connections: number
   last_check?: string
+}
+
+// Progressive Agent Types
+export interface AgentStage {
+  name: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  progress: number
+  started_at?: string
+  completed_at?: string
+  error_message?: string
+  results_count: number
+}
+
+export interface StagedResults {
+  linkedin_jobs: any[]
+  other_jobs: any[]
+  verified_contacts: any[]
+  campaigns: any[]
+  total_jobs: number
+  total_contacts: number
+  total_campaigns: number
+}
+
+export interface ProgressiveAgent {
+  id: string
+  query: string
+  status: 'initializing' | 'linkedin_stage' | 'enrichment_stage' | 'completed' | 'failed'
+  created_at: string
+  updated_at: string
+  total_progress: number
+  stages: Record<string, AgentStage>
+  staged_results: StagedResults
+  hours_old: number
+  custom_tags?: string[]
+  final_stats?: Record<string, any>
+}
+
+export interface ProgressiveAgentResponse {
+  agent: ProgressiveAgent
+  message: string
+  next_update_in_seconds: number
 }
 
 class ApiClient {
@@ -176,9 +217,9 @@ class ApiClient {
   private async request(endpoint: string, options: RequestInit = {}) {
     const headers = await this.getAuthHeaders()
     
-    // Add timeout for long-running requests
+    // Add timeout for long-running requests (real job scraping takes time)
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 1200000) // 20 minute timeout for real data processing
+    const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 minute timeout for real data processing
     
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -210,10 +251,10 @@ class ApiClient {
   async login(email: string, password: string) {
     try {
       console.log('Login attempt with API base:', this.baseUrl)
-      console.log('⏳ Connecting to backend (this may take 30-60 seconds if backend is sleeping)...')
+      console.log('⏳ Connecting to backend...')
       
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 90000) // 90 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
       
       const response = await fetch(`${this.baseUrl}/api/auth/login`, {
         method: 'POST',
@@ -247,10 +288,6 @@ class ApiClient {
       console.log('✅ Login successful!')
       return authData
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.error('❌ Login timeout - backend is taking too long to respond')
-        throw new Error('Login timeout: The backend is starting up, please try again in a moment.')
-      }
       console.error('Login error:', error)
       throw error
     }
@@ -301,67 +338,58 @@ class ApiClient {
 
   // Dashboard Stats - Real backend data
   async getDashboardStats(): Promise<DashboardStats> {
-    try {
-      return await this.request('/api/dashboard/stats')
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
-      return {
-        activeAgents: 0,
-        totalRuns: 0,
-        totalJobs: 0,
-        successRate: 0
-      }
-    }
+    return await this.request('/api/dashboard/stats')
   }
 
   // Agent Management
   async getAgents(): Promise<Agent[]> {
-    try {
-      return await this.request('/api/agents')
-    } catch (error) {
-      console.error('Error fetching agents:', error)
-      return []
-    }
+    return await this.request('/api/agents')
   }
 
   async createAgent(query: string, hoursOld: number = 24, customTags?: string): Promise<{ agent: Agent, results: JobSearchResults }> {
-    try {
-      const response = await this.request('/api/search-jobs', {
-        method: 'POST',
-        body: JSON.stringify({
-          query,
-          hours_old: hoursOld,
-          custom_tags: customTags ? [customTags] : undefined
-        })
-      })
-
-      const newAgent: Agent = {
-        id: `agent_${Date.now()}`,
+    console.log('🚀 Creating real agent with backend processing...')
+    
+    // Create the agent with real backend processing
+    const response = await this.request('/api/search-jobs', {
+      method: 'POST',
+      body: JSON.stringify({
         query,
-        status: 'completed',
-        created_at: new Date().toISOString(),
-        total_jobs_found: response.jobs_found || 0,
-        total_emails_found: response.leads_added || 0,
         hours_old: hoursOld,
-        custom_tags: customTags,
-        batch_id: `agent_${Date.now()}`
-      }
+        enforce_salary: true,
+        auto_generate_messages: true,
+        create_campaigns: true,
+        custom_tags: customTags ? [customTags] : undefined
+      })
+    })
 
-      const results: JobSearchResults = {
-        companies_analyzed: response.companies_analyzed || [],
-        jobs_found: response.jobs_found || 0,
-        total_processed: response.total_processed || 0,
-        search_query: response.search_query || query,
-        timestamp: response.timestamp || new Date().toISOString(),
-        campaigns_created: response.campaigns_created,
-        leads_added: response.leads_added
-      }
+    console.log('✅ Agent creation response:', response)
 
-      return { agent: newAgent, results }
-    } catch (error) {
-      console.error('Error creating agent:', error)
-      throw error
+    // Create agent data from the response
+    const agent: Agent = {
+      id: response.batch_id || `agent_${Date.now()}`,
+      query: query,
+      status: 'running', // Real agents start as running and may take time to complete
+      created_at: new Date().toISOString(),
+      total_jobs_found: response.estimated_jobs || 0,
+      total_emails_found: 0, // Will be updated as it processes
+      hours_old: hoursOld,
+      custom_tags: customTags,
+      batch_id: response.batch_id
     }
+
+    // For real agents, return minimal results since processing happens in background
+    const results: JobSearchResults = {
+      companies_analyzed: [],
+      jobs_found: response.estimated_jobs || 0,
+      total_processed: 0,
+      search_query: query,
+      timestamp: new Date().toISOString(),
+      campaigns_created: [],
+      leads_added: 0
+    }
+
+    console.log('📝 Agent created:', agent.id, 'Processing in background...')
+    return { agent, results }
   }
 
   async deleteAgent(id: string): Promise<void> {
@@ -631,6 +659,154 @@ class ApiClient {
     } catch (error) {
       console.error('Error finding company domain:', error)
       throw error
+    }
+  }
+
+  // Progressive Agent Methods
+  async createProgressiveAgent(query: string, hoursOld: number = 24, customTags?: string): Promise<ProgressiveAgentResponse> {
+    console.log('🚀 Creating progressive agent for instant LinkedIn results...')
+    
+    const response = await this.request('/api/agents/create-progressive', {
+      method: 'POST',
+      body: JSON.stringify({
+        query,
+        hours_old: hoursOld,
+        enforce_salary: true,
+        auto_generate_messages: true,
+        create_campaigns: true,
+        custom_tags: customTags ? [customTags] : undefined
+      })
+    })
+
+    console.log('✅ Progressive agent created:', response.agent.id)
+    return response
+  }
+
+  async getProgressiveAgent(agentId: string): Promise<ProgressiveAgentResponse> {
+    return await this.request(`/api/agents/progressive/${agentId}`)
+  }
+
+  async getAllProgressiveAgents(): Promise<ProgressiveAgent[]> {
+    return await this.request('/api/agents/progressive')
+  }
+
+  // Enhanced polling helper with WebSocket fallback and error resilience
+  async pollProgressiveAgent(
+    agentId: string, 
+    onUpdate: (agent: ProgressiveAgent) => void, 
+    onComplete: (agent: ProgressiveAgent) => void,
+    onError?: (error: string) => void
+  ) {
+    let isActive = true
+    let retryCount = 0
+    const maxRetries = 5
+    const baseDelay = 5000 // 5 seconds base delay
+    
+    const poll = async () => {
+      if (!isActive) return
+      
+      try {
+        const response = await this.getProgressiveAgent(agentId)
+        const agent = response.agent
+        
+        // Reset retry count on successful response
+        retryCount = 0
+        
+        onUpdate(agent)
+        
+        if (agent.status === 'completed' || agent.status === 'failed') {
+          onComplete(agent)
+          isActive = false
+          return
+        }
+        
+        // Use adaptive polling intervals based on stage
+        let pollInterval = response.next_update_in_seconds * 1000
+        
+        // More frequent polling for LinkedIn stage (fast results)
+        if (agent.status === 'linkedin_stage') {
+          pollInterval = Math.min(pollInterval, 3000) // 3 seconds max for LinkedIn
+        } else if (agent.status === 'enrichment_stage') {
+          pollInterval = Math.min(pollInterval, 10000) // 10 seconds max for enrichment
+        }
+        
+        setTimeout(poll, pollInterval)
+        
+      } catch (error) {
+        console.error('Error polling progressive agent:', error)
+        retryCount++
+        
+        if (retryCount >= maxRetries) {
+          const errorMsg = `Failed to poll agent ${agentId} after ${maxRetries} attempts`
+          console.error(errorMsg)
+          onError?.(errorMsg)
+          isActive = false
+          return
+        }
+        
+        // Exponential backoff with jitter
+        const delay = baseDelay * Math.pow(2, retryCount - 1) + Math.random() * 1000
+        setTimeout(poll, delay)
+      }
+    }
+    
+    // Start polling
+    poll()
+    
+    // Return cleanup function
+    return () => {
+      isActive = false
+    }
+  }
+
+  // WebSocket connection for real-time updates (when available)
+  connectProgressiveUpdates(
+    agentId: string,
+    onUpdate: (agent: ProgressiveAgent) => void,
+    onComplete: (agent: ProgressiveAgent) => void,
+    onError?: (error: string) => void
+  ) {
+    // Try WebSocket first, fallback to polling
+    try {
+      const wsUrl = this.baseUrl.replace('http', 'ws') + `/ws/agents/${agentId}`
+      const ws = new WebSocket(wsUrl)
+      
+      ws.onopen = () => {
+        console.log(`🔌 WebSocket connected for agent ${agentId}`)
+      }
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          const agent = data.agent as ProgressiveAgent
+          
+          onUpdate(agent)
+          
+          if (agent.status === 'completed' || agent.status === 'failed') {
+            onComplete(agent)
+            ws.close()
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error)
+        }
+      }
+      
+      ws.onerror = (error) => {
+        console.warn('WebSocket error, falling back to polling:', error)
+        ws.close()
+        // Fallback to polling
+        this.pollProgressiveAgent(agentId, onUpdate, onComplete, onError)
+      }
+      
+      ws.onclose = () => {
+        console.log(`🔌 WebSocket disconnected for agent ${agentId}`)
+      }
+      
+      return ws
+    } catch (error) {
+      console.warn('WebSocket not available, using polling:', error)
+      this.pollProgressiveAgent(agentId, onUpdate, onComplete, onError)
+      return null
     }
   }
 }

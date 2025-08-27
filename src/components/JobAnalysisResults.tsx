@@ -39,7 +39,7 @@ export default function JobAnalysisResults({ results, onClose }: JobAnalysisResu
   }
 
   const getJobSourceBadge = (jobSource: string) => {
-    const source = jobSource.toLowerCase()
+    const source = (jobSource || 'Unknown').toLowerCase()
     
     if (source.includes('linkedin') && source.includes('rapidapi')) {
       return (
@@ -87,14 +87,15 @@ export default function JobAnalysisResults({ results, onClose }: JobAnalysisResu
   }
 
   const getRecommendationBadge = (recommendation: string) => {
-    if (recommendation.toLowerCase().includes('target') || recommendation.toLowerCase().includes('process')) {
+    const rec = (recommendation || '').toLowerCase()
+    if (rec.includes('target') || rec.includes('process')) {
       return (
         <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white">
           <CheckCircle className="w-3 h-3 mr-1" />
           Target
         </Badge>
       )
-    } else if (recommendation.toLowerCase().includes('skip')) {
+    } else if (rec.includes('skip')) {
       return (
         <Badge variant="outline" className="border-red-500 text-red-600">
           <XCircle className="w-3 h-3 mr-1" />
@@ -112,10 +113,10 @@ export default function JobAnalysisResults({ results, onClose }: JobAnalysisResu
   }
 
   const sourceStats = getJobSourceStats()
-  const targetCompanies = results.companies_analyzed.filter(c => 
-    c.recommendation.toLowerCase().includes('target') || 
-    c.recommendation.toLowerCase().includes('process')
-  )
+  const targetCompanies = results.companies_analyzed.filter(c => {
+    const rec = (c.recommendation || '').toLowerCase()
+    return rec.includes('target') || rec.includes('process')
+  })
 
   return (
     <div className="space-y-6">
@@ -214,7 +215,7 @@ export default function JobAnalysisResults({ results, onClose }: JobAnalysisResu
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold text-lg text-foreground">{company.company}</h3>
-                          {getJobSourceBadge(company.job_source)}
+                          {getJobSourceBadge(company.job_source || 'Unknown')}
                           {getRecommendationBadge(company.recommendation)}
                         </div>
                         <p className="text-muted-foreground font-medium">{company.job_title}</p>

@@ -695,9 +695,12 @@ export default function Dashboard() {
                               {agent.custom_tags && (
                                 <div className="mt-3">
                                   <div className="flex flex-wrap gap-2">
-                                    {agent.custom_tags.split(',').map((tag, index) => (
+                                    {(Array.isArray(agent.custom_tags) 
+                                      ? agent.custom_tags 
+                                      : agent.custom_tags.split(',')
+                                    ).map((tag, index) => (
                                       <span key={index} className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs rounded-full">
-                                        {tag.trim()}
+                                        {typeof tag === 'string' ? tag.trim() : tag}
                                       </span>
                                     ))}
                                   </div>

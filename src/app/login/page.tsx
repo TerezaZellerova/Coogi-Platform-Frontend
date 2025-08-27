@@ -47,18 +47,30 @@ export default function LoginPage() {
     addToast({
       type: 'info',
       title: 'Signing In...',
-      message: 'Connecting to backend (may take 30-60 seconds if server is sleeping)',
-      duration: 8000
+      message: 'Connecting to backend...',
+      duration: 5000
     })
     
     try {
-      await apiClient.login(email, password)
-      addToast({
-        type: 'success',
-        title: 'Welcome Back!',
-        message: 'Login successful. Redirecting to dashboard...',
-        duration: 3000
-      })
+      const authData = await apiClient.login(email, password)
+      
+      // Check if we're in demo mode by checking the token
+      if (authData.token.startsWith('demo_')) {
+        addToast({
+          type: 'warning',
+          title: 'Demo Mode Active',
+          message: 'Backend unavailable - using demo data for testing',
+          duration: 5000
+        })
+      } else {
+        addToast({
+          type: 'success',
+          title: 'Welcome Back!',
+          message: 'Login successful. Redirecting to dashboard...',
+          duration: 3000
+        })
+      }
+      
       router.push('/dashboard')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Invalid credentials'

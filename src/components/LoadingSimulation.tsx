@@ -7,6 +7,7 @@ import { CheckCircle, Loader2, Search, Users, Mail, Database, Rocket } from 'luc
 interface LoadingSimulationProps {
   isVisible: boolean
   onCompleteAction: () => void
+  forceComplete?: boolean
 }
 
 interface LoadingStep {
@@ -17,7 +18,7 @@ interface LoadingStep {
   completed: boolean
 }
 
-export function LoadingSimulation({ isVisible, onCompleteAction }: LoadingSimulationProps) {
+export default function LoadingSimulation({ isVisible, onCompleteAction, forceComplete = false }: LoadingSimulationProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const [steps, setSteps] = useState<LoadingStep[]>([
@@ -67,6 +68,17 @@ export function LoadingSimulation({ isVisible, onCompleteAction }: LoadingSimula
       return
     }
 
+    if (forceComplete) {
+      // Complete all steps immediately
+      setSteps(prev => prev.map(step => ({ ...step, completed: true })))
+      setProgress(100)
+      setCurrentStep(steps.length)
+      setTimeout(() => {
+        onCompleteAction()
+      }, 500)
+      return
+    }
+
     let progressInterval: NodeJS.Timeout
     let stepTimeout: NodeJS.Timeout
 
@@ -113,7 +125,7 @@ export function LoadingSimulation({ isVisible, onCompleteAction }: LoadingSimula
       clearInterval(progressInterval)
       clearTimeout(stepTimeout)
     }
-  }, [isVisible, onCompleteAction, steps.length])
+  }, [isVisible, onCompleteAction, steps.length, forceComplete])
 
   if (!isVisible) return null
 
@@ -197,5 +209,3 @@ export function LoadingSimulation({ isVisible, onCompleteAction }: LoadingSimula
     </div>
   )
 }
-
-export default LoadingSimulation
