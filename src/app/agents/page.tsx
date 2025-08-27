@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiClient, type Agent, type JobSearchResults } from '@/lib/api-production'
 import JobAnalysisResults from '@/components/JobAnalysisResults'
+import LoadingSimulation from '@/components/LoadingSimulation'
 import { 
   ArrowLeft,
   Play,
@@ -44,6 +45,10 @@ export default function AgentsPage() {
   // Analysis results state
   const [analysisResults, setAnalysisResults] = useState<JobSearchResults | null>(null)
   const [showResults, setShowResults] = useState(false)
+
+  // Loading simulation state
+  const [showLoadingSimulation, setShowLoadingSimulation] = useState(false)
+  const [forceComplete, setForceComplete] = useState(false)
 
   // New agent form
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -81,6 +86,9 @@ export default function AgentsPage() {
     if (!newAgent.query.trim()) return
 
     setActionLoading('create')
+    setShowLoadingSimulation(true)
+    setForceComplete(false)
+    
     try {
       // Construct enhanced query string with location and company size
       let enhancedQuery = newAgent.query.trim()
@@ -105,9 +113,11 @@ export default function AgentsPage() {
         newAgent.customTags.trim() || undefined
       )
       
+      // Force loading simulation to complete when API finishes
+      setForceComplete(true)
+      
       // Store the analysis results
       setAnalysisResults(response.results)
-      setShowResults(true)
       
       // Add just the agent to the list
       setAgents(prev => [response.agent, ...prev])
@@ -177,6 +187,12 @@ export default function AgentsPage() {
   }
 
   const stats = getStatsOverview()
+
+  const handleLoadingComplete = () => {
+    setShowLoadingSimulation(false)
+    setShowResults(true)
+    setActionLoading(null)
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -738,6 +754,13 @@ export default function AgentsPage() {
           </div>
         </div>
       )}
+
+      {/* Loading Simulation */}
+      <LoadingSimulation 
+        isVisible={showLoadingSimulation}
+        onComplete={handleLoadingComplete}
+        forceComplete={forceComplete}
+      />
     </div>
   )
 }
