@@ -758,8 +758,7 @@ export default function AgentsPage() {
       {/* Loading Simulation */}
       <LoadingSimulation 
         isVisible={showLoadingSimulation}
-        onComplete={handleLoadingComplete}
-        forceComplete={forceComplete}
+        onCompleteAction={handleLoadingComplete}
       />
     </div>
   )
