@@ -42,6 +42,15 @@ export default function LoginPage() {
     }
 
     setLoading(true)
+    
+    // Show initial feedback
+    addToast({
+      type: 'info',
+      title: 'Signing In...',
+      message: 'Connecting to backend (may take 30-60 seconds if server is sleeping)',
+      duration: 8000
+    })
+    
     try {
       await apiClient.login(email, password)
       addToast({
@@ -52,11 +61,12 @@ export default function LoginPage() {
       })
       router.push('/dashboard')
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Invalid credentials'
       addToast({
         type: 'error',
         title: 'Login Failed',
-        message: error instanceof Error ? error.message : 'Invalid credentials',
-        duration: 5000
+        message: errorMessage,
+        duration: 8000
       })
     } finally {
       setLoading(false)
@@ -157,7 +167,7 @@ export default function LoginPage() {
                 {loading ? (
                   <div className="flex items-center space-x-2">
                     <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    <span>Signing In...</span>
+                    <span>Connecting... (may take 30-60s)</span>
                   </div>
                 ) : (
                   <>

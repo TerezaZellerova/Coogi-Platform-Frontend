@@ -210,6 +210,11 @@ class ApiClient {
   async login(email: string, password: string) {
     try {
       console.log('Login attempt with API base:', this.baseUrl)
+      console.log('⏳ Connecting to backend (this may take 30-60 seconds if backend is sleeping)...')
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 90000) // 90 second timeout
+      
       const response = await fetch(`${this.baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -217,9 +222,11 @@ class ApiClient {
           'Cache-Control': 'no-cache'
         },
         cache: 'no-store',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal
       })
 
+      clearTimeout(timeoutId)
       console.log('Login response status:', response.status)
       const data = await response.json()
       
@@ -237,8 +244,13 @@ class ApiClient {
         localStorage.setItem('coogiAuth', JSON.stringify(authData))
       }
       
+      console.log('✅ Login successful!')
       return authData
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('❌ Login timeout - backend is taking too long to respond')
+        throw new Error('Login timeout: The backend is starting up, please try again in a moment.')
+      }
       console.error('Login error:', error)
       throw error
     }
