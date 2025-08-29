@@ -16,6 +16,7 @@ import {
   Download,
   RefreshCw,
   ExternalLink,
+  Copy,
   Briefcase,
   Users,
   Calendar
@@ -39,6 +40,7 @@ interface CombinedLead {
 export default function LeadManagement() {
   const [leads, setLeads] = useState<CombinedLead[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<'all' | 'jobs' | 'contacts'>('all')
@@ -142,40 +144,131 @@ export default function LeadManagement() {
     }
   }
 
-  const exportLeads = () => {
-    const csvData = filteredLeads.map(lead => {
-      if (lead.type === 'contact') {
-        return [
-          lead.name || '',
-          lead.email || '',
-          lead.company,
-          lead.role || '',
-          lead.source,
-          lead.url || ''
-        ].join(',')
-      } else {
-        return [
-          lead.title,
-          lead.company,
-          lead.location || '',
-          lead.source,
-          lead.url || ''
-        ].join(',')
+  const exportLeads = async () => {
+    try {
+      setExporting(true)
+      console.log('Exporting leads:', filteredLeads.length)
+      
+      if (filteredLeads.length === 0) {
+        console.warn('No leads to export')
+        // Use a better notification instead of alert
+        if (typeof window !== 'undefined' && window.alert) {
+          alert('No leads to export. Please make sure you have data loaded.')
+        }
+        return
       }
-    })
-    
-    const csvContent = [
-      'Name/Title,Email/Company,Company/Location,Role/Source,Source/URL,URL',
-      ...csvData
-    ].join('\n')
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'leads.csv'
-    a.click()
-    window.URL.revokeObjectURL(url)
+
+      // Create proper CSV headers
+      const headers = ['Type', 'Title/Name', 'Email', 'Company', 'Location/Role', 'Source', 'URL']
+      
+      const csvData = filteredLeads.map(lead => {
+        if (lead.type === 'contact') {
+          return [
+            'Contact',
+            lead.name || '',
+            lead.email || '',
+            lead.company,
+            lead.role || lead.location || '',
+            lead.source,
+            lead.url || ''
+          ]
+        } else {
+          return [
+            'Job',
+            lead.title,
+            '', // No email for jobs
+            lead.company,
+            lead.location || '',
+            lead.source,
+            lead.url || ''
+          ]
+        }
+      })
+      
+      // Escape CSV values and wrap in quotes if they contain commas
+      const escapeCsvValue = (value: string) => {
+        if (!value) return ''
+        const stringValue = String(value)
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return `"${stringValue.replace(/"/g, '""')}"`
+        }
+        return stringValue
+      }
+      
+      const csvRows = [
+        headers.join(','),
+        ...csvData.map(row => row.map(escapeCsvValue).join(','))
+      ]
+      
+      const csvContent = '\uFEFF' + csvRows.join('\r\n') // Add BOM for Excel compatibility
+      console.log('CSV content length:', csvContent.length)
+      
+      // Create and download the file with better browser compatibility
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      
+      // Use different download methods for better compatibility
+      if (navigator.msSaveBlob) {
+        // IE 10+
+        navigator.msSaveBlob(blob, `coogi-leads-${new Date().toISOString().split('T')[0]}.csv`)
+      } else {
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `coogi-leads-${new Date().toISOString().split('T')[0]}.csv`
+        link.style.display = 'none'
+        
+        // Ensure the link is added to the document
+        document.body.appendChild(link)
+        
+        // Force download with a small delay for better reliability
+        setTimeout(() => {
+          link.click()
+          
+          // Clean up after a short delay
+          setTimeout(() => {
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(url)
+          }, 100)
+        }, 10)
+      }
+      
+      console.log('✅ CSV export completed successfully')
+    } catch (error) {
+      console.error('Error exporting leads:', error)
+      if (typeof window !== 'undefined' && window.alert) {
+        alert('Failed to export leads. Please try again.')
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        // Use the modern clipboard API
+        await navigator.clipboard.writeText(text)
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'absolute'
+        textArea.style.left = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      }
+      console.log('✅ URL copied to clipboard')
+      // You could add a toast notification here
+    } catch (error) {
+      console.error('Error copying to clipboard:', error)
+      // Fallback: show the URL in an alert
+      if (typeof window !== 'undefined' && window.prompt) {
+        window.prompt('Copy this URL:', text)
+      }
+    }
   }
 
   const getTypeBadge = (type: 'job' | 'contact') => {
@@ -285,10 +378,10 @@ export default function LeadManagement() {
             onClick={exportLeads}
             variant="outline"
             size="sm"
-            disabled={filteredLeads.length === 0}
+            disabled={filteredLeads.length === 0 || exporting}
           >
             <Download className="w-4 h-4 mr-2" />
-            Export CSV
+            {exporting ? 'Exporting...' : 'Export CSV'}
           </Button>
         </div>
       </div>
@@ -393,13 +486,24 @@ export default function LeadManagement() {
                           </TableCell>
                           <TableCell>
                             {lead.url && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => window.open(lead.url, '_blank')}
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(lead.url!)}
+                                  title="Copy URL"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(lead.url, '_blank')}
+                                  title="Open URL"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </Button>
+                              </div>
                             )}
                           </TableCell>
                         </TableRow>
