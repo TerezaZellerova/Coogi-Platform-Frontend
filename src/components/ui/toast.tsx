@@ -109,19 +109,20 @@ function ToastComponent({ toast }: { toast: Toast }) {
         'flex items-start gap-3 transition-all duration-300 pointer-events-auto',
         'transform translate-x-full opacity-0',
         isVisible && 'transform translate-x-0 opacity-100',
-        // Dark mode friendly backgrounds
-        toast.type === 'success' && 'bg-green-950/90 dark:bg-green-950/80 border-green-800/50 dark:border-green-700/30',
-        toast.type === 'error' && 'bg-red-950/90 dark:bg-red-950/80 border-red-800/50 dark:border-red-700/30',
-        toast.type === 'warning' && 'bg-yellow-950/90 dark:bg-yellow-950/80 border-yellow-800/50 dark:border-yellow-700/30',
-        toast.type === 'info' && 'bg-blue-950/90 dark:bg-blue-950/80 border-blue-800/50 dark:border-blue-700/30'
+        // Improved dark mode contrast with better light mode fallbacks
+        toast.type === 'success' && 'bg-green-50 dark:bg-green-950/95 border-green-200 dark:border-green-800/60',
+        toast.type === 'error' && 'bg-red-50 dark:bg-red-950/95 border-red-200 dark:border-red-800/60',
+        toast.type === 'warning' && 'bg-yellow-50 dark:bg-yellow-950/95 border-yellow-200 dark:border-yellow-800/60',
+        toast.type === 'info' && 'bg-blue-50 dark:bg-blue-950/95 border-blue-200 dark:border-blue-800/60'
       )}
     >
       <div className={cn(
         'flex-shrink-0 w-5 h-5 mt-0.5',
-        toast.type === 'success' && 'text-green-400 dark:text-green-300',
-        toast.type === 'error' && 'text-red-400 dark:text-red-300',
-        toast.type === 'warning' && 'text-yellow-400 dark:text-yellow-300',
-        toast.type === 'info' && 'text-blue-400 dark:text-blue-300'
+        // Better contrast for both light and dark modes
+        toast.type === 'success' && 'text-green-600 dark:text-green-300',
+        toast.type === 'error' && 'text-red-600 dark:text-red-300',
+        toast.type === 'warning' && 'text-yellow-600 dark:text-yellow-300',
+        toast.type === 'info' && 'text-blue-600 dark:text-blue-300'
       )}>
         <Icon className="w-5 h-5" />
       </div>
@@ -130,20 +131,22 @@ function ToastComponent({ toast }: { toast: Toast }) {
         {toast.title && (
           <div className={cn(
             'font-semibold mb-1',
-            toast.type === 'success' && 'text-green-100 dark:text-green-50',
-            toast.type === 'error' && 'text-red-100 dark:text-red-50',
-            toast.type === 'warning' && 'text-yellow-100 dark:text-yellow-50',
-            toast.type === 'info' && 'text-blue-100 dark:text-blue-50'
+            // High contrast text for readability
+            toast.type === 'success' && 'text-green-800 dark:text-green-100',
+            toast.type === 'error' && 'text-red-800 dark:text-red-100',
+            toast.type === 'warning' && 'text-yellow-800 dark:text-yellow-100',
+            toast.type === 'info' && 'text-blue-800 dark:text-blue-100'
           )}>
             {toast.title}
           </div>
         )}
         <div className={cn(
           'text-sm',
-          toast.type === 'success' && 'text-green-200 dark:text-green-100',
-          toast.type === 'error' && 'text-red-200 dark:text-red-100',
-          toast.type === 'warning' && 'text-yellow-200 dark:text-yellow-100',
-          toast.type === 'info' && 'text-blue-200 dark:text-blue-100'
+          // High contrast message text
+          toast.type === 'success' && 'text-green-700 dark:text-green-200',
+          toast.type === 'error' && 'text-red-700 dark:text-red-200',
+          toast.type === 'warning' && 'text-yellow-700 dark:text-yellow-200',
+          toast.type === 'info' && 'text-blue-700 dark:text-blue-200'
         )}>
           {toast.message}
         </div>
@@ -152,11 +155,12 @@ function ToastComponent({ toast }: { toast: Toast }) {
       <button
         onClick={handleRemove}
         className={cn(
-          'flex-shrink-0 transition-colors rounded-sm p-1 hover:bg-white/10',
-          toast.type === 'success' && 'text-green-300 hover:text-green-100',
-          toast.type === 'error' && 'text-red-300 hover:text-red-100',
-          toast.type === 'warning' && 'text-yellow-300 hover:text-yellow-100',
-          toast.type === 'info' && 'text-blue-300 hover:text-blue-100'
+          'flex-shrink-0 transition-colors rounded-sm p-1',
+          // Better close button visibility
+          toast.type === 'success' && 'text-green-600 hover:text-green-800 dark:text-green-300 dark:hover:text-green-100 hover:bg-green-100 dark:hover:bg-green-900/50',
+          toast.type === 'error' && 'text-red-600 hover:text-red-800 dark:text-red-300 dark:hover:text-red-100 hover:bg-red-100 dark:hover:bg-red-900/50',
+          toast.type === 'warning' && 'text-yellow-600 hover:text-yellow-800 dark:text-yellow-300 dark:hover:text-yellow-100 hover:bg-yellow-100 dark:hover:bg-yellow-900/50',
+          toast.type === 'info' && 'text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900/50'
         )}
       >
         <X className="w-4 h-4" />
