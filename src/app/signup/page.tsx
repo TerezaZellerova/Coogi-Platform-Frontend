@@ -116,9 +116,6 @@ export default function SignupPage() {
               <CoogiLogo size="lg" />
             </div>
             <div>
-              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                Join COOGI
-              </CardTitle>
               <CardDescription className="text-base mt-2">
                 Create your account to start finding leads
               </CardDescription>
