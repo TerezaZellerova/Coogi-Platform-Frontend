@@ -518,6 +518,47 @@ class ApiClient {
     }
   }
 
+  // Lead Data Management - Real backend data for dashboard
+  async getLeadJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
+    try {
+      const response = await this.request(`/api/leads/jobs?limit=${limit}`)
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      console.error('Error fetching lead jobs:', error)
+      return { success: false, data: [] }
+    }
+  }
+
+  async getLeadContacts(limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[] }> {
+    try {
+      const response = await this.request(`/api/leads/contacts?limit=${limit}`)
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      console.error('Error fetching lead contacts:', error)
+      return { success: false, data: [] }
+    }
+  }
+
+  async getLeadCampaigns(): Promise<{ success: boolean; data: ProgressiveCampaign[] }> {
+    try {
+      const response = await this.request('/api/leads/campaigns')
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      console.error('Error fetching lead campaigns:', error)
+      return { success: false, data: [] }
+    }
+  }
+
+  async getLeadDashboardStats(): Promise<DashboardStatsEnhanced> {
+    try {
+      const response = await this.request('/api/leads/dashboard-stats')
+      return response.data || { total_jobs: 0, total_contacts: 0, total_campaigns: 0, active_agents: 0 }
+    } catch (error) {
+      console.error('Error fetching lead dashboard stats:', error)
+      return { total_jobs: 0, total_contacts: 0, total_campaigns: 0, active_agents: 0 }
+    }
+  }
+
   // Job Search
   async searchJobs(request: JobSearchRequest): Promise<JobSearchResponse> {
     try {
@@ -758,32 +799,56 @@ class ApiClient {
   }
 
   // Progressive Agent Data Methods
-  async getProgressiveJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[]; count: number }> {
-    return this.request(`/leads/jobs?limit=${limit}`)
+  async getProgressiveJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
+    try {
+      const response = await this.request(`/api/leads/jobs?limit=${limit}`)
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      console.error('Error fetching progressive jobs:', error)
+      return { success: false, data: [] }
+    }
   }
 
-  async getProgressiveContacts(limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[]; count: number }> {
-    return this.request(`/leads/contacts?limit=${limit}`)
+  async getProgressiveContacts(limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[] }> {
+    try {
+      const response = await this.request(`/api/leads/contacts?limit=${limit}`)
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      console.error('Error fetching progressive contacts:', error)
+      return { success: false, data: [] }
+    }
   }
 
-  async getProgressiveCampaigns(limit: number = 100): Promise<{ success: boolean; data: ProgressiveCampaign[]; count: number }> {
-    return this.request(`/leads/campaigns?limit=${limit}`)
+  async getProgressiveCampaigns(limit: number = 100): Promise<{ success: boolean; data: ProgressiveCampaign[] }> {
+    try {
+      const response = await this.request(`/api/leads/campaigns?limit=${limit}`)
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      console.error('Error fetching progressive campaigns:', error)
+      return { success: false, data: [] }
+    }
   }
 
   async getDashboardStatsEnhanced(): Promise<{ success: boolean; data: DashboardStatsEnhanced }> {
-    return this.request('/leads/dashboard-stats')
+    try {
+      const response = await this.request('/api/leads/dashboard-stats')
+      return { success: true, data: response.data || { total_jobs: 0, total_contacts: 0, total_campaigns: 0, active_agents: 0 } }
+    } catch (error) {
+      console.error('Error fetching enhanced dashboard stats:', error)
+      return { success: false, data: { total_jobs: 0, total_contacts: 0, total_campaigns: 0, active_agents: 0 } }
+    }
   }
 
   async getAgentJobs(agentId: string, limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[]; count: number }> {
-    return this.request(`/leads/agent/${agentId}/jobs?limit=${limit}`)
+    return this.request(`/api/leads/agent/${agentId}/jobs?limit=${limit}`)
   }
 
   async getAgentContacts(agentId: string, limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[]; count: number }> {
-    return this.request(`/leads/agent/${agentId}/contacts?limit=${limit}`)
+    return this.request(`/api/leads/agent/${agentId}/contacts?limit=${limit}`)
   }
 
   async getAgentCampaigns(agentId: string, limit: number = 100): Promise<{ success: boolean; data: ProgressiveCampaign[]; count: number }> {
-    return this.request(`/leads/agent/${agentId}/campaigns?limit=${limit}`)
+    return this.request(`/api/leads/agent/${agentId}/campaigns?limit=${limit}`)
   }
 
   // Enhanced polling helper with WebSocket fallback and error resilience
