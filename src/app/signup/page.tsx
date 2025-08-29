@@ -18,7 +18,6 @@ import {
   Eye, 
   EyeOff,
   Sparkles,
-  UserPlus,
   Zap
 } from 'lucide-react'
 
@@ -113,12 +112,12 @@ export default function SignupPage() {
       <div className="relative z-10 w-full max-w-md">
         <Card className="backdrop-blur-lg bg-card/80 border-border/50 shadow-2xl">
           <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-primary/70 rounded-2xl flex items-center justify-center shadow-lg">
-              <UserPlus className="w-8 h-8 text-primary-foreground" />
+            <div className="mx-auto">
+              <CoogiLogo size="lg" />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                Join Coogi
+                Join COOGI
               </CardTitle>
               <CardDescription className="text-base mt-2">
                 Create your account to start finding leads

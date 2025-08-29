@@ -118,7 +118,7 @@ export function CoogiLogo({
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           }}
         >
-          Coogi
+          COOGI
         </span>
       )}
     </div>

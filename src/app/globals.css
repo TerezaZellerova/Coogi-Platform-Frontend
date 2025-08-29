@@ -438,4 +438,93 @@
     outline: 2px solid rgb(var(--ring));
     outline-offset: 2px;
   }
+
+  /* Landing page specific styles */
+  .hero-gradient {
+    background: linear-gradient(135deg, rgb(var(--background)) 0%, rgb(var(--muted)) 100%);
+  }
+
+  .section-gradient {
+    background: linear-gradient(180deg, transparent 0%, rgb(var(--muted) / 0.3) 50%, transparent 100%);
+  }
+
+  .feature-card {
+    background: rgb(var(--card) / 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgb(var(--border) / 0.5);
+    transition: all 0.3s ease;
+  }
+
+  .feature-card:hover {
+    background: rgb(var(--card) / 0.8);
+    border-color: rgb(var(--border));
+    transform: translateY(-2px);
+  }
+
+  .stats-number {
+    background: linear-gradient(135deg, rgb(var(--foreground)), rgb(var(--foreground) / 0.8));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Improved gradient backgrounds */
+  .gradient-aura {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 1000px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgb(var(--primary) / 0.08) 0%, transparent 70%);
+    filter: blur(120px);
+    z-index: -1;
+    animation: gradient-float 8s ease-in-out infinite;
+  }
+
+  @keyframes gradient-float {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.1) rotate(1deg);
+    }
+  }
+
+  /* Enhanced button styles */
+  .cta-primary {
+    background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--primary) / 0.9));
+    box-shadow: 0 4px 20px rgb(var(--primary) / 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .cta-primary:hover {
+    box-shadow: 0 8px 30px rgb(var(--primary) / 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* Social proof styling */
+  .social-proof {
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+  }
+
+  .social-proof:hover {
+    opacity: 0.8;
+  }
+
+  /* Testimonial cards */
+  .testimonial-card {
+    background: rgb(var(--card) / 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgb(var(--border) / 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .testimonial-card:hover {
+    background: rgb(var(--card) / 0.8);
+    border-color: rgb(var(--border) / 0.6);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgb(var(--foreground) / 0.1);
+  }
 }
