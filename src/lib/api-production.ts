@@ -182,6 +182,73 @@ export interface ProgressiveAgentResponse {
   next_update_in_seconds: number
 }
 
+// Progressive Agent Data Types
+export interface ProgressiveJob {
+  id: number
+  agent_id: string
+  job_id?: string
+  title: string
+  company: string
+  location?: string
+  url?: string
+  description?: string
+  posted_date?: string
+  employment_type?: string
+  experience_level?: string
+  salary?: string
+  site: string
+  company_url?: string
+  is_remote: boolean
+  skills?: string[]
+  is_demo: boolean
+  scraped_at: string
+  created_at: string
+}
+
+export interface ProgressiveContact {
+  id: number
+  agent_id: string
+  contact_id?: string
+  name?: string
+  first_name?: string
+  last_name?: string
+  email?: string
+  company?: string
+  role?: string
+  title?: string
+  linkedin_url?: string
+  phone?: string
+  verified: boolean
+  source: string
+  confidence_score?: number
+  created_at: string
+}
+
+export interface ProgressiveCampaign {
+  id: number
+  agent_id: string
+  campaign_id?: string
+  name: string
+  type: string
+  status: string
+  subject?: string
+  content?: string
+  target_count: number
+  sent_count: number
+  open_count: number
+  reply_count: number
+  platform: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DashboardStatsEnhanced {
+  total_jobs: number
+  total_contacts: number
+  total_campaigns: number
+  active_agents: number
+}
+
 class ApiClient {
   private baseUrl: string
 
@@ -688,6 +755,35 @@ class ApiClient {
 
   async getAllProgressiveAgents(): Promise<ProgressiveAgent[]> {
     return await this.request('/api/agents/progressive')
+  }
+
+  // Progressive Agent Data Methods
+  async getProgressiveJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[]; count: number }> {
+    return this.request(`/leads/jobs?limit=${limit}`)
+  }
+
+  async getProgressiveContacts(limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[]; count: number }> {
+    return this.request(`/leads/contacts?limit=${limit}`)
+  }
+
+  async getProgressiveCampaigns(limit: number = 100): Promise<{ success: boolean; data: ProgressiveCampaign[]; count: number }> {
+    return this.request(`/leads/campaigns?limit=${limit}`)
+  }
+
+  async getDashboardStatsEnhanced(): Promise<{ success: boolean; data: DashboardStatsEnhanced }> {
+    return this.request('/leads/dashboard-stats')
+  }
+
+  async getAgentJobs(agentId: string, limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[]; count: number }> {
+    return this.request(`/leads/agent/${agentId}/jobs?limit=${limit}`)
+  }
+
+  async getAgentContacts(agentId: string, limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[]; count: number }> {
+    return this.request(`/leads/agent/${agentId}/contacts?limit=${limit}`)
+  }
+
+  async getAgentCampaigns(agentId: string, limit: number = 100): Promise<{ success: boolean; data: ProgressiveCampaign[]; count: number }> {
+    return this.request(`/leads/agent/${agentId}/campaigns?limit=${limit}`)
   }
 
   // Enhanced polling helper with WebSocket fallback and error resilience

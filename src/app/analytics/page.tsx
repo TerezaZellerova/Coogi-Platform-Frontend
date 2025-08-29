@@ -28,6 +28,7 @@ import {
   Zap
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { CoogiLogo } from '@/components/ui/coogi-logo'
 
 export default function Analytics() {
   const router = useRouter()
@@ -96,7 +97,7 @@ export default function Analytics() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -112,9 +113,7 @@ export default function Analytics() {
               </Button>
               <div className="h-6 w-px bg-border hidden sm:block" />
               <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <BarChart3 className="w-5 h-5 text-white" />
-                </div>
+                <CoogiLogo size="sm" iconOnly />
                 <div>
                   <h1 className="text-2xl font-bold text-foreground">
                     Analytics & Insights
@@ -214,7 +213,7 @@ export default function Analytics() {
 
         {/* Performance Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+          <Card className="shadow-lg border bg-card backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-xl flex items-center gap-2">
                 <PieChart className="w-5 h-5 text-purple-500" />
@@ -224,37 +223,37 @@ export default function Analytics() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{metrics.conversionRate}%</div>
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <div className="text-2xl font-bold text-foreground">{metrics.conversionRate}%</div>
                   <p className="text-sm text-muted-foreground">Job-to-Email Rate</p>
                 </div>
-                <div className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{metrics.avgJobsPerAgent}</div>
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <div className="text-2xl font-bold text-foreground">{metrics.avgJobsPerAgent}</div>
                   <p className="text-sm text-muted-foreground">Avg Jobs/Agent</p>
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Jobs Discovery Rate</span>
-                  <span className="text-sm font-medium">High</span>
+                  <span className="text-sm font-medium text-foreground">High</span>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full" style={{width: '85%'}}></div>
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Email Verification Rate</span>
-                  <span className="text-sm font-medium">{stats.successRate}%</span>
+                  <span className="text-sm font-medium text-foreground">{stats.successRate}%</span>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" style={{width: `${stats.successRate}%`}}></div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+          <Card className="shadow-lg border bg-card backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-xl flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-blue-500" />
@@ -268,13 +267,13 @@ export default function Analytics() {
                   <p className="text-center text-muted-foreground py-8">No agents to analyze</p>
                 ) : (
                   agents.slice(0, 5).map((agent, index) => (
-                    <div key={agent.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div key={agent.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-bold">
                           {index + 1}
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{agent.query}</p>
+                          <p className="font-medium text-sm text-foreground">{agent.query}</p>
                           <p className="text-xs text-muted-foreground">
                             {agent.total_jobs_found || 0} jobs • {agent.total_emails_found || 0} emails
                           </p>
@@ -293,20 +292,20 @@ export default function Analytics() {
 
         {/* Additional Analytics Tabs */}
         <Tabs defaultValue="trends" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-            <TabsTrigger value="trends" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsList className="grid w-full grid-cols-3 bg-muted p-1 rounded-xl">
+            <TabsTrigger value="trends" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground">
               Trends & Patterns
             </TabsTrigger>
-            <TabsTrigger value="efficiency" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="efficiency" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground">
               Efficiency Analysis
             </TabsTrigger>
-            <TabsTrigger value="insights" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="insights" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground">
               Key Insights
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="trends" className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <Card className="shadow-lg border bg-card backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>Search Trends</CardTitle>
                 <CardDescription>Popular search queries and timing patterns</CardDescription>
@@ -314,26 +313,26 @@ export default function Analytics() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                      <h4 className="font-semibold mb-2">Most Active Search Terms</h4>
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <h4 className="font-semibold mb-2 text-foreground">Most Active Search Terms</h4>
                       <div className="space-y-2">
                         {Array.from(new Set(agents.map(a => a.query))).slice(0, 5).map((query, index) => (
                           <div key={index} className="flex justify-between">
-                            <span className="text-sm">{query}</span>
-                            <span className="text-sm font-medium">{agents.filter(a => a.query === query).length}</span>
+                            <span className="text-sm text-foreground">{query}</span>
+                            <span className="text-sm font-medium text-muted-foreground">{agents.filter(a => a.query === query).length}</span>
                           </div>
                         ))}
                       </div>
                     </div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                      <h4 className="font-semibold mb-2">Agent Status Distribution</h4>
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <h4 className="font-semibold mb-2 text-foreground">Agent Status Distribution</h4>
                       <div className="space-y-2">
                         {['running', 'completed', 'paused', 'failed'].map(status => {
                           const count = agents.filter(a => a.status === status).length
                           return (
                             <div key={status} className="flex justify-between">
-                              <span className="text-sm capitalize">{status}</span>
-                              <span className="text-sm font-medium">{count}</span>
+                              <span className="text-sm capitalize text-foreground">{status}</span>
+                              <span className="text-sm font-medium text-muted-foreground">{count}</span>
                             </div>
                           )
                         })}
@@ -346,7 +345,7 @@ export default function Analytics() {
           </TabsContent>
 
           <TabsContent value="efficiency" className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <Card className="shadow-lg border bg-card backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>Efficiency Metrics</CardTitle>
                 <CardDescription>Performance benchmarks and optimization opportunities</CardDescription>
@@ -380,7 +379,7 @@ export default function Analytics() {
           </TabsContent>
 
           <TabsContent value="insights" className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <Card className="shadow-lg border bg-card backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>Key Insights & Recommendations</CardTitle>
                 <CardDescription>AI-powered insights to optimize your lead generation</CardDescription>

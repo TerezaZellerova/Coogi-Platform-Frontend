@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiClient, type Agent, type JobSearchResults, type ProgressiveAgent } from '@/lib/api-production'
 import JobAnalysisResults from '@/components/JobAnalysisResults'
 import LoadingSimulation from '@/components/LoadingSimulation'
+import AgentResultsView from '@/components/AgentResultsView'
 import { ProgressiveAgentCard } from '@/components/ProgressiveAgentCard'
 import { NotificationSystem, useNotifications } from '@/components/NotificationSystem'
 import { 
@@ -35,6 +36,7 @@ import {
   Eye
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { CoogiLogo } from '@/components/ui/coogi-logo'
 
 export default function AgentsPage() {
   const router = useRouter()
@@ -47,6 +49,8 @@ export default function AgentsPage() {
   // Analysis results state
   const [analysisResults, setAnalysisResults] = useState<JobSearchResults | null>(null)
   const [showResults, setShowResults] = useState(false)
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [showAgentResults, setShowAgentResults] = useState(false)
 
   // Loading simulation state
   const [showLoadingSimulation, setShowLoadingSimulation] = useState(false)
@@ -366,9 +370,7 @@ export default function AgentsPage() {
               </Button>
               <div className="h-6 w-px bg-border hidden sm:block" />
               <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Users className="w-5 h-5 text-white" />
-                </div>
+                <CoogiLogo size="sm" iconOnly />
                 <div>
                   <h1 className="text-2xl font-bold text-foreground">
                     Agent Management
@@ -899,36 +901,8 @@ export default function AgentsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            // Check if we have stored results for this agent
-                            const storedResults = agentResults[agent.id]
-                            if (storedResults) {
-                              setAnalysisResults(storedResults)
-                              setShowResults(true)
-                            } else {
-                              // Show demo results if no stored results found
-                              setAnalysisResults({
-                                companies_analyzed: [
-                                  {
-                                    company: "Demo Company",
-                                    job_title: "Software Engineer", 
-                                    job_url: "https://example.com",
-                                    job_source: "LinkedIn (RapidAPI)",
-                                    has_ta_team: false,
-                                    contacts_found: 3,
-                                    top_contacts: [
-                                      { name: "John Doe", title: "Engineering Manager" }
-                                    ],
-                                  recommendation: "TARGET - Great opportunity",
-                                  timestamp: new Date().toISOString()
-                                }
-                              ],
-                              jobs_found: 25,
-                              total_processed: 5,
-                              search_query: agent.query,
-                              timestamp: new Date().toISOString()
-                            })
-                            setShowResults(true)
-                            }
+                            setSelectedAgent(agent)
+                            setShowAgentResults(true)
                           }}
                           className="border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400"
                         >
@@ -1012,6 +986,18 @@ export default function AgentsPage() {
         notifications={notifications}
         onDismissAction={dismissNotification}
       />
+
+      {/* Agent Results View */}
+      {selectedAgent && (
+        <AgentResultsView
+          agent={selectedAgent}
+          isOpen={showAgentResults}
+          onCloseAction={() => {
+            setShowAgentResults(false)
+            setSelectedAgent(null)
+          }}
+        />
+      )}
     </div>
   )
 }

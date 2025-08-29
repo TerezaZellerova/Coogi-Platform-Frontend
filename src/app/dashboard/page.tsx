@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { apiClient, type Agent, type DashboardStats, type Campaign } from '@/lib/api-production'
 import { useAgentMonitoring } from '@/hooks/useAgentMonitoring'
 import { useToast } from '@/components/ui/toast'
+import AgentLaunchModal from '@/components/AgentLaunchModal'
 import LeadManagement from '@/components/LeadManagement'
 import CampaignManagement from '@/components/CampaignManagement'
 import { 
@@ -30,16 +31,28 @@ import {
   WifiOff,
   BarChart3,
   Menu,
-  X
+  X,
+  Rocket
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle-clean'
+import { CoogiLogo } from '@/components/ui/coogi-logo'
 
-export default function Dashboard() {
+function DashboardContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { addToast } = useToast()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [backendConnected, setBackendConnected] = useState(false)
+  const [activeTab, setActiveTab] = useState('agents')
+  
+  // User profile state
+  const [userProfile, setUserProfile] = useState({
+    name: 'User',
+    email: 'user@coogi.dev',
+    avatar: ''
+  })
+  
   const [stats, setStats] = useState<DashboardStats>({
     activeAgents: 0,
     totalRuns: 0,
@@ -50,6 +63,7 @@ export default function Dashboard() {
   const [query, setQuery] = useState('')
   const [hoursOld, setHoursOld] = useState('24')
   const [customTags, setCustomTags] = useState('')
+  const [showAgentLaunchModal, setShowAgentLaunchModal] = useState(false)
 
   // Real-time agent monitoring
   const {
@@ -76,6 +90,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     checkAuthentication()
+    loadUserProfile()
   }, [])
 
   // Auto-refresh dashboard data every 30 seconds
@@ -88,6 +103,20 @@ export default function Dashboard() {
 
     return () => clearInterval(interval)
   }, [isAuthenticated])
+
+  // Handle URL tab parameter
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'leads') {
+      setActiveTab('leads')
+    } else if (tab === 'campaigns') {
+      setActiveTab('campaigns')
+    } else if (tab === 'agents') {
+      setActiveTab('agents')
+    } else if (tab === 'debug') {
+      setActiveTab('debug')
+    }
+  }, [searchParams])
 
   const checkAuthentication = async () => {
     try {
@@ -199,6 +228,31 @@ export default function Dashboard() {
     }
   }
 
+  // Modal handlers
+  const handleAgentCreated = (agent: any) => {
+    // Add to monitoring system
+    addAgent(agent)
+    
+    addToast({
+      type: 'success',
+      title: 'Agent Started',
+      message: `Searching for "${agent.query}" opportunities`,
+      duration: 4000
+    })
+    
+    // Reload dashboard data
+    loadDashboardData()
+  }
+
+  const handleModalError = (error: string) => {
+    addToast({
+      type: 'error',
+      title: 'Agent Creation Failed',
+      message: error,
+      duration: 8000
+    })
+  }
+
   const handleAgentAction = async (agentId: string, action: 'pause' | 'resume' | 'delete') => {
     setActionLoading(agentId)
     try {
@@ -257,9 +311,59 @@ export default function Dashboard() {
     return <Badge variant={variants[status] as any}>{status}</Badge>
   }
 
+  const loadUserProfile = () => {
+    try {
+      // Load from localStorage first
+      const savedProfile = localStorage.getItem('userProfile')
+      if (savedProfile) {
+        const profileData = JSON.parse(savedProfile)
+        setUserProfile({
+          name: profileData.name || 'User',
+          email: profileData.email || 'user@coogi.dev',
+          avatar: profileData.avatar || ''
+        })
+        return
+      }
+
+      // Fallback to API client
+      const currentUser = apiClient.getCurrentUser()
+      if (currentUser) {
+        setUserProfile({
+          name: currentUser.name || 'User',
+          email: currentUser.email || 'user@coogi.dev',
+          avatar: ''
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load user profile:', error)
+    }
+  }
+
+  // Listen for profile updates
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      loadUserProfile()
+    }
+
+    // Listen for storage changes (in case profile is updated in another tab)
+    window.addEventListener('storage', handleProfileUpdate)
+    
+    // Custom event for profile updates within the same tab
+    window.addEventListener('profileUpdated', handleProfileUpdate)
+
+    return () => {
+      window.removeEventListener('storage', handleProfileUpdate)
+      window.removeEventListener('profileUpdated', handleProfileUpdate)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadUserProfile()
+  }, [])
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mx-auto mb-4">
             <span className="text-white font-bold text-sm">C</span>
@@ -275,15 +379,13 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/20" role="banner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="text-xl font-medium tracking-tight" role="img" aria-label="Coogi Logo">
-                Coogi
-              </div>
+              <CoogiLogo size="md" />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">
                   Dashboard
@@ -336,13 +438,21 @@ export default function Dashboard() {
                 className="flex items-center space-x-3 px-4 py-2 h-auto glass-card border-border hover:bg-muted transition-all duration-200"
                 aria-label="Go to user profile"
               >
-                <div className="w-8 h-8 bg-foreground rounded-full flex items-center justify-center" aria-hidden="true">
-                  <span className="text-sm font-medium text-background">
-                    {apiClient.getCurrentUser()?.name?.charAt(0) || 'U'}
-                  </span>
+                <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center overflow-hidden" aria-hidden="true">
+                  {userProfile.avatar ? (
+                    <img 
+                      src={userProfile.avatar} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-sm font-medium text-white">
+                      {userProfile.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <span className="text-sm font-medium text-foreground hidden sm:inline">
-                  {apiClient.getCurrentUser()?.name || 'User'}
+                  {userProfile.name}
                 </span>
               </Button>
 
@@ -534,7 +644,7 @@ export default function Dashboard() {
         {/* Main Content */}
         <section aria-labelledby="main-content-section">
           <h3 id="main-content-section" className="sr-only">Main Dashboard Content</h3>
-          <Tabs defaultValue="agents" className="space-y-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
             <TabsList className="grid w-full grid-cols-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl" role="tablist" aria-label="Dashboard sections">
               <TabsTrigger value="agents" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 Agent Management
@@ -563,77 +673,33 @@ export default function Dashboard() {
                     Create New Agent
                   </CardTitle>
                   <CardDescription className="text-base text-description">
-                    Start a new lead generation search with custom parameters
+                    Launch a powerful lead generation agent with real-time progress tracking
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleCreateAgent} className="space-y-6">
-                    <div className="space-y-3">
-                      <label htmlFor="query" className="text-sm font-semibold text-contrast-medium">
-                        Search Query *
-                      </label>
-                      <Input
-                        id="query"
-                        placeholder="e.g., software engineer, nurse, marketing manager"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        required
-                        className="h-11"
-                      />
-                      <p className="text-xs text-muted-enhanced">
-                        Describe the type of job or role you're looking for
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <label htmlFor="hoursOld" className="text-sm font-semibold text-contrast-medium">
-                        Job Timeframe
-                      </label>
-                      <select
-                        id="hoursOld"
-                        value={hoursOld}
-                        onChange={(e) => setHoursOld(e.target.value)}
-                        className="w-full h-11 px-3 py-2 border border-input bg-background rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      >
-                        <option value="1">Last 1 hour</option>
-                        <option value="24">Last 24 hours</option>
-                        <option value="168">Last week</option>
-                        <option value="720">Last month</option>
-                      </select>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <label htmlFor="customTags" className="text-sm font-semibold text-contrast-medium">
-                        Custom Tags
-                      </label>
-                      <Input
-                        id="customTags"
-                        placeholder="e.g., urgent, high-priority, remote"
-                        value={customTags}
-                        onChange={(e) => setCustomTags(e.target.value)}
-                        className="h-11"
-                      />
-                      <p className="text-xs text-muted-enhanced">
-                        Optional tags for organizing your leads
-                      </p>
-                    </div>
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full h-12 btn-premium hover-sophisticated focus-ring relative overflow-hidden" 
-                      disabled={actionLoading === 'create'}
-                    >
-                      <Play className="w-5 h-5 mr-2 relative z-10" />
-                      <span className="relative z-10">
-                        {actionLoading === 'create' ? (
-                          <div className="flex items-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Launching Agent... (This may take 1-2 minutes)
-                          </div>
-                        ) : 'Launch New Agent'}
-                      </span>
-                    </Button>
-                  </form>
+                <CardContent className="space-y-6">
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-lg p-4">
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <Rocket className="w-4 h-4 text-purple-500" />
+                      Next-Generation Agent System
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• LinkedIn jobs in 2-3 minutes</li>
+                      <li>• Multi-platform job search</li>
+                      <li>• Automated contact discovery</li>
+                      <li>• Personalized campaign creation</li>
+                    </ul>
+                  </div>
+                  
+                  <Button 
+                    onClick={() => setShowAgentLaunchModal(true)}
+                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-purple-500 via-purple-600 to-pink-500 hover:from-purple-600 hover:via-purple-700 hover:to-pink-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200" 
+                  >
+                    Launch Your Agent
+                  </Button>
+                  
+                  <p className="text-xs text-center text-muted-foreground">
+                    Get started in seconds • Real-time progress tracking • Professional results
+                  </p>
                 </CardContent>
               </Card>
 
@@ -814,6 +880,27 @@ export default function Dashboard() {
         </Tabs>
         </section>
       </main>
+
+      {/* Agent Launch Modal */}
+      <AgentLaunchModal
+        isOpen={showAgentLaunchModal}
+        onCloseAction={() => setShowAgentLaunchModal(false)}
+        onAgentCreatedAction={handleAgentCreated}
+        onErrorAction={handleModalError}
+      />
     </div>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+        <p>Loading dashboard...</p>
+      </div>
+    </div>}>
+      <DashboardContent />
+    </Suspense>
   )
 }

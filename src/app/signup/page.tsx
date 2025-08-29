@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { CoogiLogo } from '@/components/ui/coogi-logo'
 import { apiClient } from '@/lib/api-production'
 import { useToast } from '@/components/ui/toast'
 import { 
@@ -104,12 +105,7 @@ export default function SignupPage() {
           className="flex items-center space-x-3 cursor-pointer group" 
           onClick={() => router.push('/landing')}
         >
-          <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Globe className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Coogi
-          </span>
+          <CoogiLogo size="sm" />
         </div>
         <ThemeToggle />
       </div>

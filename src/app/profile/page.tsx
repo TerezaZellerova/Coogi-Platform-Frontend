@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiClient } from '@/lib/api-production'
+import { useToast } from '@/components/ui/toast'
+import { CoogiLogo } from '@/components/ui/coogi-logo'
 import { 
   ArrowLeft,
   User,
@@ -21,23 +24,82 @@ import {
   Settings,
   Edit,
   Save,
-  X
+  X,
+  Camera,
+  Phone,
+  MapPin,
+  Briefcase,
+  Globe,
+  Lock,
+  Eye,
+  EyeOff,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Users,
+  Activity
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 
+interface UserProfile {
+  id: string
+  name: string
+  email: string
+  avatar?: string
+  bio?: string
+  phone?: string
+  location?: string
+  company?: string
+  website?: string
+  role: string
+  joinDate: string
+  lastLogin: string
+  timezone: string
+  language: string
+  emailNotifications: boolean
+  pushNotifications: boolean
+  marketingEmails: boolean
+  twoFactorEnabled: boolean
+}
+
 export default function ProfilePage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { addToast } = useToast()
+  
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [user, setUser] = useState({
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  
+  const [user, setUser] = useState<UserProfile>({
+    id: '1',
     name: 'Test User',
     email: 'test@coogi.dev',
-    role: 'admin',
-    joinDate: new Date().toISOString(),
-    lastLogin: new Date().toISOString()
+    avatar: '',
+    bio: 'Lead generation specialist passionate about connecting businesses with their ideal customers.',
+    phone: '+1 (555) 123-4567',
+    location: 'San Francisco, CA',
+    company: 'Coogi Inc.',
+    website: 'https://coogi.dev',
+    role: 'Admin',
+    joinDate: '2025-01-15T10:30:00Z',
+    lastLogin: new Date().toISOString(),
+    timezone: 'America/New_York',
+    language: 'en',
+    emailNotifications: true,
+    pushNotifications: true,
+    marketingEmails: false,
+    twoFactorEnabled: false
   })
   
-  const [editedUser, setEditedUser] = useState({ ...user })
+  const [editedUser, setEditedUser] = useState<UserProfile>({ ...user })
+  const [passwordData, setPasswordData] = useState({
+    current: '',
+    new: '',
+    confirm: ''
+  })
 
   useEffect(() => {
     if (!apiClient.isAuthenticated()) {
@@ -51,17 +113,151 @@ export default function ProfilePage() {
       setUser(prev => ({ ...prev, ...currentUser }))
       setEditedUser(prev => ({ ...prev, ...currentUser }))
     }
+
+    // Load saved profile data from localStorage
+    const savedProfile = localStorage.getItem('userProfile')
+    if (savedProfile) {
+      try {
+        const profileData = JSON.parse(savedProfile)
+        setUser(prev => ({ ...prev, ...profileData }))
+        setEditedUser(prev => ({ ...prev, ...profileData }))
+      } catch (error) {
+        console.error('Failed to parse saved profile data:', error)
+      }
+    }
+
+    // Load saved avatar from localStorage (fallback if not in profile data)
+    const savedAvatar = localStorage.getItem('userAvatar')
+    if (savedAvatar && !savedProfile) {
+      setUser(prev => ({ ...prev, avatar: savedAvatar }))
+      setEditedUser(prev => ({ ...prev, avatar: savedAvatar }))
+    }
   }, [router])
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      addToast({
+        type: 'error',
+        title: 'File too large',
+        message: 'Please choose an image smaller than 5MB'
+      })
+      return
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      addToast({
+        type: 'error',
+        title: 'Invalid file type',
+        message: 'Please choose an image file'
+      })
+      return
+    }
+
+    setUploading(true)
+    
+    try {
+      // Convert to base64 for demo (in production, upload to cloud storage)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        setUser(prev => ({ ...prev, avatar: result }))
+        setEditedUser(prev => ({ ...prev, avatar: result }))
+        
+        // Save avatar to localStorage for persistence
+        localStorage.setItem('userAvatar', result)
+        
+        // Update the full profile with avatar
+        const savedProfile = localStorage.getItem('userProfile')
+        if (savedProfile) {
+          try {
+            const profileData = JSON.parse(savedProfile)
+            profileData.avatar = result
+            localStorage.setItem('userProfile', JSON.stringify(profileData))
+          } catch (error) {
+            console.error('Failed to update profile with avatar:', error)
+          }
+        }
+        
+        // Dispatch custom event to notify other components (like dashboard)
+        window.dispatchEvent(new CustomEvent('profileUpdated'))
+        
+        addToast({
+          type: 'success',
+          title: 'Avatar updated',
+          message: 'Your profile picture has been updated successfully'
+        })
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Upload failed',
+        message: 'Failed to upload avatar. Please try again.'
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleRemoveAvatar = () => {
+    setUser(prev => ({ ...prev, avatar: '' }))
+    setEditedUser(prev => ({ ...prev, avatar: '' }))
+    localStorage.removeItem('userAvatar')
+    
+    // Update the full profile to remove avatar
+    const savedProfile = localStorage.getItem('userProfile')
+    if (savedProfile) {
+      try {
+        const profileData = JSON.parse(savedProfile)
+        profileData.avatar = ''
+        localStorage.setItem('userProfile', JSON.stringify(profileData))
+      } catch (error) {
+        console.error('Failed to update profile:', error)
+      }
+    }
+    
+    // Dispatch custom event to notify other components (like dashboard)
+    window.dispatchEvent(new CustomEvent('profileUpdated'))
+    
+    addToast({
+      type: 'success',
+      title: 'Avatar removed',
+      message: 'Your profile picture has been removed'
+    })
+  }
 
   const handleSaveProfile = async () => {
     setLoading(true)
     try {
-      // In a real app, you'd call an API to update the user profile
-      setUser(editedUser)
+      // In production: await apiClient.updateProfile(editedUser)
+      setUser({ ...editedUser })
       setEditing(false)
-      // You could call: await apiClient.updateProfile(editedUser)
+      
+      // Save profile data to localStorage for persistence
+      localStorage.setItem('userProfile', JSON.stringify(editedUser))
+      if (editedUser.avatar) {
+        localStorage.setItem('userAvatar', editedUser.avatar)
+      }
+      
+      // Dispatch custom event to notify other components (like dashboard)
+      window.dispatchEvent(new CustomEvent('profileUpdated'))
+      
+      addToast({
+        type: 'success',
+        title: 'Profile updated',
+        message: 'Your profile has been updated successfully'
+      })
     } catch (error) {
-      console.error('Error updating profile:', error)
+      addToast({
+        type: 'error',
+        title: 'Update failed',
+        message: 'Failed to update profile. Please try again.'
+      })
     } finally {
       setLoading(false)
     }
@@ -72,10 +268,95 @@ export default function ProfilePage() {
     setEditing(false)
   }
 
+  const handleChangePassword = async () => {
+    if (passwordData.new !== passwordData.confirm) {
+      addToast({
+        type: 'error',
+        title: 'Password mismatch',
+        message: 'New passwords do not match'
+      })
+      return
+    }
+
+    if (passwordData.new.length < 8) {
+      addToast({
+        type: 'error',
+        title: 'Password too short',
+        message: 'Password must be at least 8 characters long'
+      })
+      return
+    }
+
+    setLoading(true)
+    try {
+      // In production: await apiClient.changePassword(passwordData)
+      setPasswordData({ current: '', new: '', confirm: '' })
+      
+      addToast({
+        type: 'success',
+        title: 'Password changed',
+        message: 'Your password has been updated successfully'
+      })
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Password change failed',
+        message: 'Failed to change password. Please try again.'
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your account? This action cannot be undone.'
+    )
+    
+    if (!confirmed) return
+
+    setLoading(true)
+    try {
+      // In production: await apiClient.deleteAccount()
+      addToast({
+        type: 'success',
+        title: 'Account scheduled for deletion',
+        message: 'Your account will be deleted within 24 hours'
+      })
+      router.push('/login')
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Deletion failed',
+        message: 'Failed to delete account. Please contact support.'
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -91,11 +372,9 @@ export default function ProfilePage() {
               </Button>
               <div className="h-6 w-px bg-border hidden sm:block" />
               <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <User className="w-5 h-5 text-white" />
-                </div>
+                <CoogiLogo size="sm" iconOnly />
                 <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  <h1 className="text-2xl font-bold text-foreground">
                     User Profile
                   </h1>
                   <p className="text-xs text-muted-foreground">Manage your account and preferences</p>
@@ -127,56 +406,112 @@ export default function ProfilePage() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Profile Overview */}
-        <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+        {/* Profile Overview Card */}
+        <Card className="shadow-lg border-0 bg-card">
           <CardContent className="pt-6">
-            <div className="flex items-center space-x-6">
-              <div className="w-20 h-20 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center shadow-lg">
-                <span className="text-2xl font-bold text-white">
-                  {(editedUser.name || 'U').charAt(0).toUpperCase()}
-                </span>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
+              {/* Avatar Section */}
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg">
+                  {user.avatar ? (
+                    <img 
+                      src={user.avatar} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-3xl font-bold text-white">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                {editing && (
+                  <div className="absolute -bottom-2 -right-2 flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full p-0 bg-background shadow-md"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      title="Upload new avatar"
+                    >
+                      {uploading ? (
+                        <Clock className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Camera className="w-3 h-3" />
+                      )}
+                    </Button>
+                    {user.avatar && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 rounded-full p-0 bg-background shadow-md"
+                        onClick={handleRemoveAvatar}
+                        title="Remove avatar"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
               </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{user.name}</h2>
-                <p className="text-muted-foreground flex items-center gap-2 mt-1">
+              
+              {/* User Info */}
+              <div className="flex-1 text-center sm:text-left">
+                <h2 className="text-2xl font-bold text-foreground">{user.name}</h2>
+                <p className="text-muted-foreground flex items-center justify-center sm:justify-start gap-2 mt-1">
                   <Mail className="w-4 h-4" />
                   {user.email}
                 </p>
-                <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center justify-center sm:justify-start gap-4 mt-3">
                   <Badge variant="outline" className="capitalize">
                     <Shield className="w-3 h-3 mr-1" />
                     {user.role}
                   </Badge>
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    Joined {new Date(user.joinDate).toLocaleDateString()}
+                    Joined {formatDate(user.joinDate)}
                   </span>
                 </div>
+                {user.bio && (
+                  <p className="text-sm text-muted-foreground mt-2 max-w-md">{user.bio}</p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Profile Settings */}
+        {/* Profile Settings Tabs */}
         <Tabs defaultValue="personal" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-            <TabsTrigger value="personal" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              Personal Info
+          <TabsList className="grid w-full grid-cols-4 bg-muted p-1 rounded-lg">
+            <TabsTrigger value="personal" className="rounded-md">
+              <User className="w-4 h-4 mr-2" />
+              Personal
             </TabsTrigger>
-            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="security" className="rounded-md">
+              <Shield className="w-4 h-4 mr-2" />
               Security
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="preferences" className="rounded-md">
+              <Settings className="w-4 h-4 mr-2" />
               Preferences
             </TabsTrigger>
-            <TabsTrigger value="data" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              Data & Export
+            <TabsTrigger value="data" className="rounded-md">
+              <Download className="w-4 h-4 mr-2" />
+              Data
             </TabsTrigger>
           </TabsList>
 
-          {/* Personal Information */}
+          {/* Personal Information Tab */}
           <TabsContent value="personal" className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="w-5 h-5 text-blue-500" />
@@ -187,8 +522,9 @@ export default function ProfilePage() {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold">Full Name</label>
+                    <Label htmlFor="name">Full Name</Label>
                     <Input
+                      id="name"
                       value={editedUser.name}
                       onChange={(e) => setEditedUser(prev => ({ ...prev, name: e.target.value }))}
                       disabled={!editing}
@@ -196,8 +532,9 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold">Email Address</label>
+                    <Label htmlFor="email">Email Address</Label>
                     <Input
+                      id="email"
                       value={editedUser.email}
                       onChange={(e) => setEditedUser(prev => ({ ...prev, email: e.target.value }))}
                       disabled={!editing}
@@ -205,6 +542,59 @@ export default function ProfilePage() {
                       type="email"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      value={editedUser.phone || ''}
+                      onChange={(e) => setEditedUser(prev => ({ ...prev, phone: e.target.value }))}
+                      disabled={!editing}
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
+                    <Input
+                      id="location"
+                      value={editedUser.location || ''}
+                      onChange={(e) => setEditedUser(prev => ({ ...prev, location: e.target.value }))}
+                      disabled={!editing}
+                      placeholder="Enter your location"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Company</Label>
+                    <Input
+                      id="company"
+                      value={editedUser.company || ''}
+                      onChange={(e) => setEditedUser(prev => ({ ...prev, company: e.target.value }))}
+                      disabled={!editing}
+                      placeholder="Enter your company"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      value={editedUser.website || ''}
+                      onChange={(e) => setEditedUser(prev => ({ ...prev, website: e.target.value }))}
+                      disabled={!editing}
+                      placeholder="Enter your website"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <textarea
+                    id="bio"
+                    value={editedUser.bio || ''}
+                    onChange={(e) => setEditedUser(prev => ({ ...prev, bio: e.target.value }))}
+                    disabled={!editing}
+                    placeholder="Tell us about yourself..."
+                    className="w-full min-h-[100px] px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    rows={4}
+                  />
                 </div>
                 
                 <div className="pt-4 border-t">
@@ -212,18 +602,18 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
                       <div className="flex items-center gap-2 mb-2">
-                        <Shield className="w-4 h-4 text-green-600" />
+                        <CheckCircle className="w-4 h-4 text-green-600" />
                         <span className="font-medium text-green-800 dark:text-green-200">Account Active</span>
                       </div>
                       <p className="text-xs text-green-700 dark:text-green-300">Your account is in good standing</p>
                     </div>
                     <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <Activity className="w-4 h-4 text-blue-600" />
                         <span className="font-medium text-blue-800 dark:text-blue-200">Last Login</span>
                       </div>
                       <p className="text-xs text-blue-700 dark:text-blue-300">
-                        {new Date(user.lastLogin).toLocaleString()}
+                        {formatDateTime(user.lastLogin)}
                       </p>
                     </div>
                   </div>
@@ -232,9 +622,9 @@ export default function ProfilePage() {
             </Card>
           </TabsContent>
 
-          {/* Security Settings */}
+          {/* Security Tab */}
           <TabsContent value="security" className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="w-5 h-5 text-red-500" />
@@ -247,11 +637,11 @@ export default function ProfilePage() {
                   <h4 className="font-medium">Password & Authentication</h4>
                   <div className="space-y-3">
                     <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
-                      <Shield className="w-4 h-4 mr-2" />
+                      <Lock className="w-4 h-4 mr-2" />
                       Change Password (Coming Soon)
                     </Button>
                     <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
-                      <Settings className="w-4 h-4 mr-2" />
+                      <Shield className="w-4 h-4 mr-2" />
                       Enable Two-Factor Auth (Coming Soon)
                     </Button>
                   </div>
@@ -272,18 +662,42 @@ export default function ProfilePage() {
                       Sign Out of This Device
                     </Button>
                     <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
-                      <Settings className="w-4 h-4 mr-2" />
+                      <Users className="w-4 h-4 mr-2" />
                       Sign Out All Devices (Coming Soon)
                     </Button>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-red-800 dark:text-red-200">Danger Zone</h4>
+                        <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                          Account deletion is permanent and cannot be undone.
+                        </p>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="mt-3"
+                          onClick={handleDeleteAccount}
+                          disabled={loading}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Account (Coming Soon)
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Preferences */}
+          {/* Preferences Tab */}
           <TabsContent value="preferences" className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Palette className="w-5 h-5 text-purple-500" />
@@ -302,7 +716,7 @@ export default function ProfilePage() {
                       </div>
                       <Button variant="outline" size="sm" disabled>
                         <Bell className="w-4 h-4 mr-2" />
-                        Configure
+                        Configure (Coming Soon)
                       </Button>
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -312,7 +726,7 @@ export default function ProfilePage() {
                       </div>
                       <Button variant="outline" size="sm" disabled>
                         <Bell className="w-4 h-4 mr-2" />
-                        Configure
+                        Configure (Coming Soon)
                       </Button>
                     </div>
                   </div>
@@ -332,13 +746,27 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium mb-4">Language & Region</h4>
+                  <div className="space-y-3">
+                    <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
+                      <Globe className="w-4 h-4 mr-2" />
+                      Language: English (Coming Soon)
+                    </Button>
+                    <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
+                      <Clock className="w-4 h-4 mr-2" />
+                      Timezone: {user.timezone} (Coming Soon)
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Data & Export */}
+          {/* Data & Export Tab */}
           <TabsContent value="data" className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Download className="w-5 h-5 text-green-500" />
@@ -349,45 +777,40 @@ export default function ProfilePage() {
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <h4 className="font-medium">Export Your Data</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Button variant="outline" className="h-auto p-4 justify-start" disabled>
-                      <div className="flex items-start gap-3">
-                        <Download className="w-5 h-5 text-blue-500 mt-1" />
-                        <div className="text-left">
-                          <p className="font-medium">Export Agents</p>
-                          <p className="text-xs text-muted-foreground">Download all your agent data</p>
-                        </div>
-                      </div>
+                  <div className="space-y-3">
+                    <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
+                      <Download className="w-4 h-4 mr-2" />
+                      Export Profile Data (Coming Soon)
                     </Button>
-                    <Button variant="outline" className="h-auto p-4 justify-start" disabled>
-                      <div className="flex items-start gap-3">
-                        <Download className="w-5 h-5 text-green-500 mt-1" />
-                        <div className="text-left">
-                          <p className="font-medium">Export Leads</p>
-                          <p className="text-xs text-muted-foreground">Download all lead data</p>
-                        </div>
-                      </div>
+                    <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
+                      <Download className="w-4 h-4 mr-2" />
+                      Export Lead Data (Coming Soon)
+                    </Button>
+                    <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
+                      <Download className="w-4 h-4 mr-2" />
+                      Export Campaign Data (Coming Soon)
                     </Button>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t">
-                  <h4 className="font-medium mb-4">Data Management</h4>
-                  <div className="space-y-3">
-                    <Button variant="outline" className="w-full md:w-auto justify-start" disabled>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Import Data (Coming Soon)
-                    </Button>
-                    <div className="p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                      <div className="flex items-start gap-2">
-                        <Settings className="w-4 h-4 text-yellow-600 mt-0.5" />
-                        <div>
-                          <h5 className="font-medium text-yellow-900 dark:text-yellow-100">Data Retention</h5>
-                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                            Your data is automatically backed up and retained according to our data policy.
-                          </p>
-                        </div>
+                  <h4 className="font-medium mb-4">Data Usage</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-4 h-4 text-gray-600" />
+                        <span className="font-medium">Total Leads</span>
                       </div>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">1,234</p>
+                      <p className="text-xs text-muted-foreground">Lifetime leads generated</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Activity className="w-4 h-4 text-gray-600" />
+                        <span className="font-medium">Active Campaigns</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">12</p>
+                      <p className="text-xs text-muted-foreground">Currently running</p>
                     </div>
                   </div>
                 </div>

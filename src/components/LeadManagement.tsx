@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { apiClient, type Lead } from '@/lib/api-production'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { apiClient, type ProgressiveJob, type ProgressiveContact } from '@/lib/api-production'
 import { 
   Mail, 
   User, 
@@ -14,14 +15,34 @@ import {
   Search,
   Download,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Briefcase,
+  Users,
+  Calendar
 } from 'lucide-react'
 
+interface CombinedLead {
+  id: string
+  type: 'job' | 'contact'
+  title: string
+  name?: string
+  email?: string
+  company: string
+  location?: string
+  role?: string
+  source: string
+  url?: string
+  verified?: boolean
+  created_at: string
+}
+
 export default function LeadManagement() {
-  const [leads, setLeads] = useState<Lead[]>([])
+  const [leads, setLeads] = useState<CombinedLead[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
+  const [activeTab, setActiveTab] = useState<'all' | 'jobs' | 'contacts'>('all')
+  const [stats, setStats] = useState({ jobs: 0, contacts: 0, total: 0 })
 
   useEffect(() => {
     loadLeads()
@@ -30,8 +51,58 @@ export default function LeadManagement() {
   const loadLeads = async () => {
     setLoading(true)
     try {
-      const fetchedLeads = await apiClient.getLeads()
-      setLeads(fetchedLeads)
+      // Fetch both jobs and contacts from progressive agents
+      const [jobsResponse, contactsResponse] = await Promise.all([
+        apiClient.getProgressiveJobs(200),
+        apiClient.getProgressiveContacts(200)
+      ])
+
+      const combinedLeads: CombinedLead[] = []
+
+      // Add jobs as leads
+      if (jobsResponse.success) {
+        jobsResponse.data.forEach((job: ProgressiveJob) => {
+          combinedLeads.push({
+            id: `job_${job.id}`,
+            type: 'job',
+            title: job.title,
+            company: job.company,
+            location: job.location,
+            source: job.site,
+            url: job.url,
+            created_at: job.created_at
+          })
+        })
+      }
+
+      // Add contacts as leads
+      if (contactsResponse.success) {
+        contactsResponse.data.forEach((contact: ProgressiveContact) => {
+          combinedLeads.push({
+            id: `contact_${contact.id}`,
+            type: 'contact',
+            title: contact.title || contact.role || 'Contact',
+            name: contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
+            email: contact.email,
+            company: contact.company || 'Unknown',
+            role: contact.role || contact.title,
+            source: contact.source,
+            url: contact.linkedin_url,
+            verified: contact.verified,
+            created_at: contact.created_at
+          })
+        })
+      }
+
+      // Sort by creation date (newest first)
+      combinedLeads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      setLeads(combinedLeads)
+      setStats({
+        jobs: jobsResponse.data?.length || 0,
+        contacts: contactsResponse.data?.length || 0,
+        total: combinedLeads.length
+      })
     } catch (error) {
       console.error('Error loading leads:', error)
     } finally {
@@ -39,13 +110,21 @@ export default function LeadManagement() {
     }
   }
 
-  const filteredLeads = leads.filter(lead => 
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.title.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredLeads = leads.filter(lead => {
+    const matchesSearch = searchTerm === '' || (
+      lead.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.name && lead.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lead.email && lead.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      lead.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.role && lead.role.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+    
+    const matchesTab = activeTab === 'all' || 
+      (activeTab === 'jobs' && lead.type === 'job') ||
+      (activeTab === 'contacts' && lead.type === 'contact')
+    
+    return matchesSearch && matchesTab
+  })
 
   const handleSelectLead = (leadId: string) => {
     setSelectedLeads(prev => 
@@ -63,39 +142,33 @@ export default function LeadManagement() {
     }
   }
 
-  const handleCreateCampaign = async () => {
-    if (selectedLeads.length === 0) {
-      alert('Please select at least one lead')
-      return
-    }
-
-    try {
-      const campaignName = prompt('Enter campaign name:')
-      if (!campaignName) return
-
-      await apiClient.createCampaign(campaignName, selectedLeads)
-      alert('Campaign created successfully!')
-      setSelectedLeads([])
-    } catch (error) {
-      console.error('Error creating campaign:', error)
-      alert('Failed to create campaign')
-    }
-  }
-
-  const handleExportLeads = () => {
-    const selectedLeadData = leads.filter(lead => selectedLeads.includes(lead.id))
+  const exportLeads = () => {
+    const csvData = filteredLeads.map(lead => {
+      if (lead.type === 'contact') {
+        return [
+          lead.name || '',
+          lead.email || '',
+          lead.company,
+          lead.role || '',
+          lead.source,
+          lead.url || ''
+        ].join(',')
+      } else {
+        return [
+          lead.title,
+          lead.company,
+          lead.location || '',
+          lead.source,
+          lead.url || ''
+        ].join(',')
+      }
+    })
+    
     const csvContent = [
-      ['First Name', 'Last Name', 'Email', 'Company', 'Title', 'LinkedIn'],
-      ...selectedLeadData.map(lead => [
-        lead.first_name,
-        lead.last_name,
-        lead.email,
-        lead.company,
-        lead.title,
-        lead.linkedin_url || ''
-      ])
-    ].map(row => row.join(',')).join('\\n')
-
+      'Name/Title,Email/Company,Company/Location,Role/Source,Source/URL,URL',
+      ...csvData
+    ].join('\n')
+    
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -105,41 +178,34 @@ export default function LeadManagement() {
     window.URL.revokeObjectURL(url)
   }
 
-  const getStatusBadge = (status: Lead['status']) => {
+  const getTypeBadge = (type: 'job' | 'contact') => {
     const variants = {
-      active: 'default',
-      bounced: 'destructive',
-      replied: 'success',
-      unsubscribed: 'secondary'
+      job: 'default',
+      contact: 'secondary'
     }
-    return <Badge variant={variants[status] as any}>{status}</Badge>
+    const labels = {
+      job: 'Job',
+      contact: 'Contact'
+    }
+    return <Badge variant={variants[type] as any}>{labels[type]}</Badge>
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <Card className="shadow-md border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-32 mb-2"></div>
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-48"></div>
-              </div>
-              <div className="flex space-x-2">
-                <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded w-20"></div>
-                <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded w-24"></div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded mb-4"></div>
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading leads...</p>
+        </div>
       </div>
     )
   }
@@ -147,177 +213,203 @@ export default function LeadManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Lead Database</h2>
+          <p className="text-muted-foreground">
+            Manage and organize your discovered leads from agent runs
+          </p>
+        </div>
+        <Button onClick={loadLeads} variant="outline" size="sm">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.jobs} jobs + {stats.contacts} contacts
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Job Opportunities</CardTitle>
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.jobs}</div>
+            <p className="text-xs text-muted-foreground">
+              From agent searches
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Verified Contacts</CardTitle>
+            <Mail className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.contacts}</div>
+            <p className="text-xs text-muted-foreground">
+              Ready for outreach
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Actions */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            placeholder="Search leads..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        <div className="flex gap-2">
+          <Button
+            onClick={exportLeads}
+            variant="outline"
+            size="sm"
+            disabled={filteredLeads.length === 0}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
+      </div>
+
+      {/* Leads Table */}
+      <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                Lead Database
-              </CardTitle>
-              <CardDescription className="mt-2">
-                Manage and organize your generated leads • {leads.length} total leads
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadLeads}
-                disabled={loading}
-                className="shadow-sm hover:shadow-md transition-all duration-200"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              {selectedLeads.length > 0 && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportLeads}
-                    className="shadow-sm hover:shadow-md transition-all duration-200"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export ({selectedLeads.length})
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleCreateCampaign}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-sm hover:shadow-md transition-all duration-200"
-                  >
-                    <Mail className="w-4 h-4 mr-2" />
-                    Create Campaign ({selectedLeads.length})
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Building className="w-5 h-5" />
+            Leads ({filteredLeads.length})
+          </CardTitle>
+          <CardDescription>
+            Jobs and contacts discovered by your agents
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Search */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search leads by name, email, company, or title..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="text-sm text-gray-500">
-              {filteredLeads.length} of {leads.length} leads
-            </div>
-          </div>
-
-          {/* Leads Table */}
-          {filteredLeads.length > 0 ? (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <input
-                        type="checkbox"
-                        checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded"
-                      />
-                    </TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Confidence</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeads.map((lead) => (
-                    <TableRow key={lead.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={selectedLeads.includes(lead.id)}
-                          onChange={() => handleSelectLead(lead.id)}
-                          className="rounded"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="all">All ({stats.total})</TabsTrigger>
+              <TabsTrigger value="jobs">Jobs ({stats.jobs})</TabsTrigger>
+              <TabsTrigger value="contacts">Contacts ({stats.contacts})</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value={activeTab} className="mt-4">
+              {filteredLeads.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-2 text-sm font-semibold">No leads found</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {searchTerm ? 'Try adjusting your search terms.' : 'Create an agent to start discovering leads.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px]">
+                          <input
+                            type="checkbox"
+                            checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
+                            onChange={handleSelectAll}
+                            className="rounded"
+                          />
+                        </TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Title/Name</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredLeads.map((lead) => (
+                        <TableRow key={lead.id}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedLeads.includes(lead.id)}
+                              onChange={() => handleSelectLead(lead.id)}
+                              className="rounded"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {getTypeBadge(lead.type)}
+                          </TableCell>
+                          <TableCell>
                             <div className="font-medium">
-                              {lead.first_name} {lead.last_name}
+                              {lead.type === 'contact' ? lead.name : lead.title}
                             </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building className="w-4 h-4 text-gray-400" />
-                          {lead.company || 'N/A'}
-                        </div>
-                      </TableCell>
-                      <TableCell>{lead.title || 'N/A'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          {lead.email}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(lead.status)}
-                      </TableCell>
-                      <TableCell>
-                        {lead.confidence && (
-                          <Badge variant="outline">{lead.confidence}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {lead.linkedin_url && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(lead.linkedin_url, '_blank')}
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <User className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No leads found</h3>
-              <p className="text-gray-500 mb-4">
-                {searchTerm 
-                  ? 'No leads match your search criteria'
-                  : 'Start by creating agents to generate leads'
-                }
-              </p>
-              {searchTerm && (
-                <Button
-                  variant="outline"
-                  onClick={() => setSearchTerm('')}
-                >
-                  Clear search
-                </Button>
+                            {lead.role && (
+                              <div className="text-sm text-muted-foreground">{lead.role}</div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{lead.company}</div>
+                            {lead.location && (
+                              <div className="text-sm text-muted-foreground">{lead.location}</div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {lead.email && (
+                              <div className="flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                <span className="text-sm">{lead.email}</span>
+                                {lead.verified && (
+                                  <Badge variant="secondary" className="text-xs">Verified</Badge>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{lead.source}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Calendar className="w-3 h-3" />
+                              {formatDate(lead.created_at)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {lead.url && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.open(lead.url, '_blank')}
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
-            </div>
-          )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, useInView, useScroll, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle-clean'
+import { CoogiLogo } from '@/components/ui/coogi-logo'
 import { useCountUp } from '@/hooks/use-count-up'
 import LiveDemo from '@/components/LiveDemo'
 
@@ -110,11 +111,10 @@ export default function LandingPage() {
       >
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <motion.div 
-            className="text-xl font-medium tracking-tight"
             whileHover={{ scale: 1.02 }}
             transition={{ duration: 0.2 }}
           >
-            Coogi
+            <CoogiLogo size="md" />
           </motion.div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
