@@ -283,7 +283,7 @@ export default function LiveDemo() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h3 className="text-2xl font-bold mb-4 text-foreground">
             Try Our Live Lead Generation
           </h3>
           <p className="text-muted-foreground mb-6">
@@ -305,13 +305,13 @@ export default function LiveDemo() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="pl-10 pr-24 h-12 text-lg border-2 border-blue-200 dark:border-blue-700 focus:border-blue-500 dark:focus:border-blue-400 transition-colors bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
+              className="pl-10 pr-24 h-12 text-lg border border-border bg-card text-foreground focus:border-foreground/30 transition-colors"
               disabled={isSearching}
             />
             <Button
               onClick={handleSearch}
               disabled={!searchQuery.trim() || isSearching}
-              className="absolute right-1 top-1 h-10 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+              className="absolute right-1 top-1 h-10 premium-gradient"
             >
               {isSearching ? (
                 <motion.div
@@ -341,7 +341,7 @@ export default function LiveDemo() {
               size="sm"
               onClick={() => handleSuggestedCompany(company)}
               disabled={isSearching}
-              className="hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+              className="glass-card hover:border-foreground/20 transition-colors"
             >
               {company}
             </Button>
@@ -358,13 +358,13 @@ export default function LiveDemo() {
             exit={{ opacity: 0, scale: 0.9 }}
             className="text-center py-12"
           >
-            <div className="inline-flex items-center gap-3 bg-white dark:bg-slate-800 px-6 py-4 rounded-lg shadow-lg border border-gray-200 dark:border-slate-600">
+            <div className="glass-card px-6 py-4 rounded-lg shadow-lg">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"
+                className="w-6 h-6 border-2 border-foreground border-t-transparent rounded-full"
               />
-              <span className="text-lg font-medium text-gray-900 dark:text-gray-100">{searchSteps[searchStep]}</span>
+              <span className="text-lg font-medium text-foreground">{searchSteps[searchStep]}</span>
             </div>
           </motion.div>
         )}
@@ -386,10 +386,10 @@ export default function LiveDemo() {
               transition={{ delay: 0.2 }}
               className="text-center"
             >
-              <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-4 py-2 text-lg border border-green-200 dark:border-green-700">
-                <CheckCircle className="w-4 h-4 mr-2" />
+              <div className="glass-card px-4 py-2 text-sm border border-border/50">
+                <CheckCircle className="w-4 h-4 mr-2 inline" />
                 Found in {results.processingTime}s • Powered by Hunter.io, RapidAPI, OpenAI
-              </Badge>
+              </div>
             </motion.div>
 
             {/* Company Insights */}
@@ -398,41 +398,41 @@ export default function LiveDemo() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="border-2 border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800">
+              <Card className="card-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-gray-100">
-                    <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <CardTitle className="flex items-center gap-3 text-foreground">
+                    <Building2 className="w-6 h-6 text-muted-foreground" />
                     Company Intelligence
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h4 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">{results.company.name}</h4>
-                      <p className="text-gray-600 dark:text-gray-300 mb-4">{results.company.description}</p>
+                      <h4 className="text-xl font-bold mb-2 text-foreground">{results.company.name}</h4>
+                      <p className="text-muted-foreground mb-4">{results.company.description}</p>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                          <span className="text-gray-700 dark:text-gray-300">{results.company.website}</span>
+                          <Globe className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-foreground">{results.company.website}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                          <span className="text-gray-700 dark:text-gray-300">{results.company.location}</span>
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-foreground">{results.company.location}</span>
                         </div>
                       </div>
                     </div>
                     <div className="space-y-4">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="glass-card p-4 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
-                          <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                          <span className="font-medium text-gray-900 dark:text-gray-100">Employee Count</span>
+                          <Users className="w-5 h-5 text-muted-foreground" />
+                          <span className="font-medium text-foreground">Employee Count</span>
                         </div>
-                        <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{results.company.headcount.toLocaleString()}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{results.company.size}</p>
+                        <p className="text-2xl font-bold text-foreground">{results.company.headcount.toLocaleString()}</p>
+                        <p className="text-sm text-muted-foreground">{results.company.size}</p>
                       </div>
-                      <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-600">
+                      <div className="glass-card px-3 py-1 text-sm border border-border/50 inline-block rounded">
                         {results.company.industry}
-                      </Badge>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -445,10 +445,10 @@ export default function LiveDemo() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Card className="border-2 border-green-200 dark:border-green-800 bg-white dark:bg-slate-800">
+              <Card className="card-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-gray-100">
-                    <Mail className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  <CardTitle className="flex items-center gap-3 text-foreground">
+                    <Mail className="w-6 h-6 text-muted-foreground" />
                     Decision Makers Found ({results.contacts.length})
                   </CardTitle>
                 </CardHeader>
@@ -460,32 +460,32 @@ export default function LiveDemo() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 + index * 0.1 }}
-                        className="bg-white dark:bg-slate-700 p-4 rounded-lg border border-green-200 dark:border-green-700 hover:shadow-md transition-shadow"
+                        className="glass-card p-4 rounded-lg hover:border-foreground/20 transition-all duration-200"
                       >
                         <div className="flex justify-between items-start mb-3">
                           <div>
-                            <h5 className="font-semibold text-gray-900 dark:text-gray-100">{contact.name}</h5>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">{contact.role}</p>
+                            <h5 className="font-semibold text-foreground">{contact.name}</h5>
+                            <p className="text-sm text-muted-foreground">{contact.role}</p>
                           </div>
-                          <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700">
+                          <div className="glass-card px-2 py-1 text-xs border border-border/50 rounded">
                             {contact.confidence}% match
-                          </Badge>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                            <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{contact.email}</span>
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm font-mono text-foreground">{contact.email}</span>
                           </div>
                           {contact.phone && (
                             <div className="flex items-center gap-2">
-                              <Phone className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                              <span className="text-sm text-gray-700 dark:text-gray-300">{contact.phone}</span>
+                              <Phone className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm text-foreground">{contact.phone}</span>
                             </div>
                           )}
                           {contact.linkedin && (
                             <div className="flex items-center gap-2">
-                              <Linkedin className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                              <span className="text-sm text-gray-700 dark:text-gray-300">LinkedIn Profile</span>
+                              <Linkedin className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm text-foreground">LinkedIn Profile</span>
                             </div>
                           )}
                         </div>
@@ -502,10 +502,10 @@ export default function LiveDemo() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
             >
-              <Card className="border-2 border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800">
+              <Card className="card-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-gray-100">
-                    <Briefcase className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <CardTitle className="flex items-center gap-3 text-foreground">
+                    <Briefcase className="w-6 h-6 text-muted-foreground" />
                     Recent Job Openings ({results.jobs.length})
                   </CardTitle>
                 </CardHeader>
@@ -517,18 +517,18 @@ export default function LiveDemo() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.7 + index * 0.1 }}
-                        className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700"
+                        className="flex items-center justify-between p-3 glass-card rounded-lg hover:border-foreground/20 transition-all duration-200"
                       >
                         <div>
-                          <h6 className="font-medium text-gray-900 dark:text-gray-100">{job.title}</h6>
-                          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+                          <h6 className="font-medium text-foreground">{job.title}</h6>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span>{job.department}</span>
                             <span>•</span>
                             <span>{job.location}</span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Clock className="w-3 h-3" />
                             {job.posted}
                           </div>
@@ -547,10 +547,10 @@ export default function LiveDemo() {
               transition={{ delay: 0.8 }}
               className="text-center py-8"
             >
-              <h4 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Ready to generate leads for your business?</h4>
+              <h4 className="text-xl font-bold mb-4 text-foreground">Ready to generate leads for your business?</h4>
               <Button 
                 size="lg"
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3"
+                className="premium-gradient px-8 py-3"
               >
                 Start Free Trial
                 <ArrowRight className="w-4 h-4 ml-2" />
