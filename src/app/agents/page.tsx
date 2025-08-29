@@ -728,6 +728,40 @@ export default function AgentsPage() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Shared Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search agents..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-input bg-background rounded-md text-sm min-w-[120px]"
+              >
+                <option value="all">All Status</option>
+                <option value="running">Running</option>
+                <option value="paused">Paused</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {useProgressiveMode 
+                  ? `${progressiveAgents.length} progressive agents`
+                  : `${filteredAgents.length} of ${agents.length} legacy agents`
+                }
+              </Badge>
+            </div>
+          </div>
+
           {/* Progressive Agents Tab */}
           <TabsContent value="progressive" className="space-y-6">
             {progressiveAgents.length === 0 ? (
@@ -771,70 +805,9 @@ export default function AgentsPage() {
 
           {/* Legacy Agents Tab */}
           <TabsContent value="legacy" className="space-y-6">
-            {/* Filters and Search */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <div className="flex flex-col sm:flex-row gap-3 flex-1">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search agents..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-input bg-background rounded-md text-sm min-w-[120px]"
-                >
-                  <option value="all">All Status</option>
-                  <option value="running">Running</option>
-                  <option value="paused">Paused</option>
-                  <option value="completed">Completed</option>
-                  <option value="failed">Failed</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {filteredAgents.length} of {agents.length} agents
-                </Badge>
-              </div>
-            </div>
 
-        {/* Filters and Search */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-3 flex-1">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search agents..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-input bg-background rounded-md text-sm min-w-[120px]"
-            >
-              <option value="all">All Status</option>
-              <option value="running">Running</option>
-              <option value="paused">Paused</option>
-              <option value="completed">Completed</option>
-              <option value="failed">Failed</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {filteredAgents.length} of {agents.length} agents
-            </Badge>
-          </div>
-        </div>
-
-        {/* Agents Table */}
-        <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            {/* Agents Table */}
+            <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5 text-blue-500" />
