@@ -553,7 +553,6 @@ export default function LiveDemo() {
                 className="premium-gradient px-8 py-3"
               >
                 Start Free Trial
-                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </motion.div>
           </motion.div>
