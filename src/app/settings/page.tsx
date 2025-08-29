@@ -84,7 +84,7 @@ export default function SettingsPage() {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/dashboard')}
                 className="text-muted-foreground hover:text-foreground transition-colors duration-200 -ml-2"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />

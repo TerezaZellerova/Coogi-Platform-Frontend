@@ -14,7 +14,7 @@ export default function TestPage() {
         <div className="container-auto py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link 
-              href="/"
+              href="/dashboard"
               className="inline-flex items-center text-auto-medium hover:text-auto-high transition-colors group"
             >
               <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
@@ -221,7 +221,7 @@ export default function TestPage() {
 
           {/* Back to Dashboard */}
           <div className="text-center mt-12">
-            <Link href="/">
+            <Link href="/dashboard">
               <Button className="btn-premium px-8">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
