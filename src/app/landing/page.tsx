@@ -128,7 +128,12 @@ export default function LandingPage() {
               <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Features</a>
               <a href="#demo" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Demo</a>
               <a href="#testimonials" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
-              <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+              <button 
+                onClick={() => router.push('/pricing')} 
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Pricing
+              </button>
             </div>
             
             <div className="flex items-center gap-3">

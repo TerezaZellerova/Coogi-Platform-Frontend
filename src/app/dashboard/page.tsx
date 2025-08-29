@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast'
 import AgentLaunchModal from '@/components/AgentLaunchModal'
 import LeadManagement from '@/components/LeadManagement'
 import CampaignManagement from '@/components/CampaignManagement'
+import SubscriptionDashboard from '@/components/SubscriptionDashboard'
 import { 
   Users, 
   TrendingUp, 
@@ -32,7 +33,8 @@ import {
   BarChart3,
   Menu,
   X,
-  Rocket
+  Rocket,
+  Crown
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle-clean'
 import { CoogiLogo } from '@/components/ui/coogi-logo'
@@ -420,6 +422,10 @@ function DashboardContent() {
                   <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />
                   Analytics
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => setActiveTab('subscription')} aria-label="Go to Subscription management">
+                  <Crown className="w-4 h-4 mr-2" aria-hidden="true" />
+                  Subscription
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => router.push('/agents')} aria-label="Go to Agents page">
                   <Users className="w-4 h-4 mr-2" aria-hidden="true" />
                   Agents
@@ -490,6 +496,18 @@ function DashboardContent() {
               <span className="text-sm font-medium text-muted-foreground">Theme</span>
               <ThemeToggle />
             </div>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start btn-hover" 
+              onClick={() => {
+                setActiveTab('subscription')
+                setMobileMenuOpen(false)
+              }}
+              aria-label="Go to Subscription management"
+            >
+              <Crown className="w-4 h-4 mr-3" aria-hidden="true" />
+              Subscription & Billing
+            </Button>
             <Button 
               variant="ghost" 
               className="w-full justify-start btn-hover" 
@@ -645,7 +663,7 @@ function DashboardContent() {
         <section aria-labelledby="main-content-section">
           <h3 id="main-content-section" className="sr-only">Main Dashboard Content</h3>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <TabsList className="grid w-full grid-cols-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl" role="tablist" aria-label="Dashboard sections">
+            <TabsList className="grid w-full grid-cols-5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl" role="tablist" aria-label="Dashboard sections">
               <TabsTrigger value="agents" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 Agent Management
               </TabsTrigger>
@@ -654,6 +672,10 @@ function DashboardContent() {
               </TabsTrigger>
               <TabsTrigger value="leads" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 Lead Database
+              </TabsTrigger>
+              <TabsTrigger value="subscription" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
+                <Crown className="w-4 h-4 mr-2 sm:inline hidden" />
+                Subscription
               </TabsTrigger>
               <TabsTrigger value="debug" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 API Debug
@@ -823,6 +845,11 @@ function DashboardContent() {
           {/* Leads Tab */}
           <TabsContent value="leads" className="space-y-6">
             <LeadManagement />
+          </TabsContent>
+
+          {/* Subscription Tab */}
+          <TabsContent value="subscription" className="space-y-6">
+            <SubscriptionDashboard />
           </TabsContent>
 
           {/* Debug Tab */}
