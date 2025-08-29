@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { apiClient, type Campaign } from '@/lib/api-production'
 import { 
   Mail, 
@@ -16,17 +18,37 @@ import {
   BarChart3,
   ExternalLink,
   RefreshCw,
-  Plus
+  Plus,
+  Search,
+  X
 } from 'lucide-react'
 
 export default function CampaignManagement() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [filteredCampaigns, setFilteredCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newCampaignName, setNewCampaignName] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     loadCampaigns()
   }, [])
+
+  useEffect(() => {
+    // Filter campaigns based on search query
+    if (!searchQuery.trim()) {
+      setFilteredCampaigns(campaigns)
+    } else {
+      const filtered = campaigns.filter(campaign =>
+        campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        campaign.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (campaign.batch_id && campaign.batch_id.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+      setFilteredCampaigns(filtered)
+    }
+  }, [campaigns, searchQuery])
 
   const loadCampaigns = async () => {
     setLoading(true)
@@ -41,19 +63,34 @@ export default function CampaignManagement() {
   }
 
   const handleCreateCampaign = async () => {
-    const campaignName = prompt('Enter campaign name:')
-    if (!campaignName) return
+    if (!newCampaignName.trim()) return
 
     setActionLoading('create')
     try {
-      const newCampaign = await apiClient.createCampaign(campaignName, [])
+      const newCampaign = await apiClient.createCampaign(newCampaignName.trim(), [])
       setCampaigns(prev => [newCampaign, ...prev])
+      setShowCreateModal(false)
+      setNewCampaignName('')
     } catch (error) {
       console.error('Error creating campaign:', error)
       alert('Failed to create campaign')
     } finally {
       setActionLoading(null)
     }
+  }
+
+  const openCreateModal = () => {
+    setNewCampaignName('')
+    setShowCreateModal(true)
+  }
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false)
+    setNewCampaignName('')
+  }
+
+  const clearSearch = () => {
+    setSearchQuery('')
   }
 
   const getStatusBadge = (status: Campaign['status']) => {
@@ -137,12 +174,12 @@ export default function CampaignManagement() {
               </Button>
               <Button
                 size="sm"
-                onClick={handleCreateCampaign}
+                onClick={openCreateModal}
                 disabled={actionLoading === 'create'}
                 className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                {actionLoading === 'create' ? 'Creating...' : 'New Campaign'}
+                New Campaign
               </Button>
             </div>
           </div>
@@ -150,6 +187,34 @@ export default function CampaignManagement() {
         
         {campaigns.length > 0 ? (
           <CardContent>
+            {/* Search Bar */}
+            <div className="mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search campaigns by name, status, or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearSearch}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              {searchQuery && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Showing {filteredCampaigns.length} of {campaigns.length} campaigns
+                </p>
+              )}
+            </div>
+
             {/* Campaign Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
@@ -214,65 +279,88 @@ export default function CampaignManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {campaigns.map((campaign) => (
-                    <TableRow key={campaign.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Mail className="w-4 h-4 text-blue-600" />
+                  {filteredCampaigns.length > 0 ? (
+                    filteredCampaigns.map((campaign) => (
+                      <TableRow key={campaign.id} className="hover:bg-gray-50">
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Mail className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{campaign.name}</div>
+                              {campaign.batch_id && (
+                                <div className="text-xs text-gray-500">ID: {campaign.batch_id}</div>
+                              )}
+                            </div>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(campaign.status)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Users className="w-4 h-4 text-gray-400" />
+                            {campaign.leads_count}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {campaign.open_rate ? `${campaign.open_rate}%` : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {campaign.reply_rate ? `${campaign.reply_rate}%` : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(campaign.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                // In production, this would open campaign details
+                                alert('Campaign details coming soon')
+                              }}
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                // In production, this would open in Instantly.ai
+                                window.open('https://instantly.ai', '_blank')
+                              }}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        {searchQuery ? (
                           <div>
-                            <div className="font-medium">{campaign.name}</div>
-                            {campaign.batch_id && (
-                              <div className="text-xs text-gray-500">ID: {campaign.batch_id}</div>
-                            )}
+                            <Search className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                            <p>No campaigns match your search query</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={clearSearch}
+                              className="mt-2"
+                            >
+                              Clear search
+                            </Button>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(campaign.status)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4 text-gray-400" />
-                          {campaign.leads_count}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {campaign.open_rate ? `${campaign.open_rate}%` : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        {campaign.reply_rate ? `${campaign.reply_rate}%` : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(campaign.created_at)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // In production, this would open campaign details
-                              alert('Campaign details coming soon')
-                            }}
-                          >
-                            <BarChart3 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // In production, this would open in Instantly.ai
-                              window.open('https://instantly.ai', '_blank')
-                            }}
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        ) : (
+                          'No campaigns available'
+                        )}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -286,17 +374,85 @@ export default function CampaignManagement() {
                 Create your first email campaign to start reaching out to leads
               </p>
               <Button
-                onClick={handleCreateCampaign}
+                onClick={openCreateModal}
                 disabled={actionLoading === 'create'}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                {actionLoading === 'create' ? 'Creating...' : 'Create Campaign'}
+                Create Campaign
               </Button>
             </div>
           </CardContent>
         )}
       </Card>
+
+      {/* Campaign Creation Modal */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+                <Mail className="w-4 h-4 text-white" />
+              </div>
+              Create New Campaign
+            </DialogTitle>
+            <DialogDescription>
+              Create a new email campaign for your outreach efforts. Choose a descriptive name that helps you identify the campaign purpose.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="campaign-name">Campaign Name</Label>
+              <Input
+                id="campaign-name"
+                placeholder="e.g., Q1 2024 SaaS Prospects"
+                value={newCampaignName}
+                onChange={(e) => setNewCampaignName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newCampaignName.trim()) {
+                    handleCreateCampaign()
+                  }
+                }}
+                className="col-span-3"
+                disabled={actionLoading === 'create'}
+              />
+              {newCampaignName.trim() && (
+                <p className="text-xs text-gray-500">
+                  Campaign will be created with name: "{newCampaignName.trim()}"
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={closeCreateModal}
+              disabled={actionLoading === 'create'}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateCampaign}
+              disabled={!newCampaignName.trim() || actionLoading === 'create'}
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+            >
+              {actionLoading === 'create' ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Campaign
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
