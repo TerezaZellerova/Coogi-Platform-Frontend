@@ -27,10 +27,10 @@ export default function LandingPage() {
   const parallaxY = useTransform(scrollY, [0, 1000], [0, -100])
 
   // Count-up animations for stats
-  const leadsCount = useCountUp(2500000, 2000, 200)
-  const successCount = useCountUp(94, 1800, 400)
-  const companiesCount = useCountUp(10000, 2200, 600)
-  const hoursCount = useCountUp(500, 2000, 800)
+  const leadsCount = useCountUp(15000, 2000, 200)
+  const successCount = useCountUp(87, 1800, 400)
+  const companiesCount = useCountUp(150, 2200, 600)
+  const hoursCount = useCountUp(1200, 2000, 800)
 
   useEffect(() => {
     if (statsInView) {
@@ -107,7 +107,7 @@ export default function LandingPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-border/20"
+        className="fixed top-0 w-full z-50 bg-background/95 backdrop-blur-xl border-b border-border/20"
       >
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <motion.div 
@@ -116,22 +116,30 @@ export default function LandingPage() {
           >
             <CoogiLogo size="md" />
           </motion.div>
-          <div className="flex items-center gap-4">
+          
+          {/* Navigation Links - Similar to Integra */}
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium">
+            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">About</a>
+          </div>
+          
+          <div className="flex items-center gap-3">
             <ThemeToggle />
             <Button 
               variant="ghost" 
               size="sm"
-              className="text-sm font-medium"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground"
               onClick={() => router.push('/login')}
             >
-              Sign In
+              Login
             </Button>
             <Button 
               size="sm" 
-              className="text-sm font-medium px-4 premium-gradient"
+              className="text-sm font-medium px-4 bg-foreground text-background hover:bg-foreground/90 rounded-lg"
               onClick={() => router.push('/signup')}
             >
-              Get Started
+              Sign up
             </Button>
           </div>
         </div>
@@ -147,24 +155,41 @@ export default function LandingPage() {
           variants={containerVariants}
           className="container mx-auto text-center relative z-10"
         >
+          {/* Company Tagline */}
+          <motion.div 
+            variants={itemVariants}
+            className="mb-8"
+          >
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-muted/50 border border-border/30 text-sm text-muted-foreground">
+              A lead generation platform by Coogi AI
+            </div>
+          </motion.div>
+
           <motion.h1 
             variants={itemVariants}
             className="text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-5xl mx-auto leading-tight"
           >
-            Generate Premium Leads
+            Empower Your Outreach
             <motion.span 
               variants={itemVariants}
               className="block text-transparent bg-clip-text premium-gradient"
             >
-              with AI Precision
+              10x Leads, Meetings,
+            </motion.span>
+            <motion.span 
+              variants={itemVariants}
+              className="block"
+            >
+              Conversions.
             </motion.span>
           </motion.h1>
           
           <motion.p 
             variants={itemVariants}
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed"
+            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            Transform your business with intelligent lead generation that finds, validates, and delivers high-quality prospects automatically.
+            Effortlessly connect with top leads. Our AI tool curates the best 
+            leads for your business, making growth simple and effective.
           </motion.p>
           
           <motion.div 
@@ -173,25 +198,35 @@ export default function LandingPage() {
           >
             <Button 
               size="lg" 
-              className="text-base px-8 py-3 premium-gradient"
+              className="text-base px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-600 text-white border-0 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
               onClick={() => router.push('/signup')}
             >
-              Start Free Trial
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 bg-white rounded-sm flex items-center justify-center">
+                  <span className="text-xs font-bold text-gray-900">P</span>
+                </div>
+                Start Free Trial
+              </div>
             </Button>
             <Button 
               variant="outline" 
               size="lg"
-              className="text-base px-8 py-3 glass-card"
+              className="text-base px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
               onClick={() => router.push('/login')}
             >
-              Watch Demo
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
+                  <div className="w-0 h-0 border-l-[4px] border-l-purple-600 border-t-[2px] border-t-transparent border-b-[2px] border-b-transparent ml-0.5"></div>
+                </div>
+                Book live demo
+              </div>
             </Button>
           </motion.div>
         </motion.div>
       </section>
 
       {/* Stats Section */}
-      <section ref={statsRef} className="py-20 px-6">
+      <section ref={statsRef} className="py-12 md:py-16 px-6">
         <motion.div 
           initial="hidden"
           animate={statsInView ? "visible" : "hidden"}
@@ -200,45 +235,45 @@ export default function LandingPage() {
         >
           <motion.h2 
             variants={itemVariants}
-            className="text-3xl md:text-4xl font-bold text-center mb-16"
+            className="text-2xl md:text-3xl font-bold text-center mb-12"
           >
-            Trusted by thousands of companies worldwide
+            Trusted by growing businesses worldwide
           </motion.h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16 max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 max-w-5xl mx-auto">
             <motion.div variants={itemVariants} className="text-center">
-              <div className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary mb-3 tracking-tight leading-none">
-                {leadsCount.count.toLocaleString()}<span className="ml-4 text-primary/80">+</span>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2 tracking-tight leading-none">
+                {leadsCount.count.toLocaleString()}<span className="ml-2 text-primary/80">+</span>
               </div>
-              <p className="text-muted-foreground font-medium text-sm md:text-base">Leads Generated</p>
+              <p className="text-muted-foreground font-medium text-sm">Leads Generated</p>
             </motion.div>
             
             <motion.div variants={itemVariants} className="text-center">
-              <div className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary mb-3 tracking-tight leading-none">
-                {successCount.count}<span className="ml-3 text-primary/80">%</span>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2 tracking-tight leading-none">
+                {successCount.count}<span className="ml-1 text-primary/80">%</span>
               </div>
-              <p className="text-muted-foreground font-medium text-sm md:text-base">Success Rate</p>
+              <p className="text-muted-foreground font-medium text-sm">Success Rate</p>
             </motion.div>
             
             <motion.div variants={itemVariants} className="text-center">
-              <div className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary mb-3 tracking-tight leading-none">
-                {companiesCount.count.toLocaleString()}<span className="ml-4 text-primary/80">+</span>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2 tracking-tight leading-none">
+                {companiesCount.count}<span className="ml-2 text-primary/80">+</span>
               </div>
-              <p className="text-muted-foreground font-medium text-sm md:text-base">Companies Served</p>
+              <p className="text-muted-foreground font-medium text-sm">Active Users</p>
             </motion.div>
             
             <motion.div variants={itemVariants} className="text-center">
-              <div className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary mb-3 tracking-tight leading-none">
-                {hoursCount.count}<span className="ml-4 text-primary/80">+</span>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2 tracking-tight leading-none">
+                {hoursCount.count}<span className="ml-2 text-primary/80">+</span>
               </div>
-              <p className="text-muted-foreground font-medium text-sm md:text-base">Time Saved</p>
+              <p className="text-muted-foreground font-medium text-sm">Hours Saved</p>
             </motion.div>
           </div>
         </motion.div>
       </section>
 
       {/* Values Section */}
-      <section ref={valuesRef} className="py-20 px-6 bg-muted/10">
+      <section id="features" ref={valuesRef} className="py-20 px-6 bg-muted/10">
         <motion.div 
           initial="hidden"
           animate={valuesInView ? "visible" : "hidden"}
@@ -274,7 +309,7 @@ export default function LandingPage() {
       </section>
 
       {/* Parallax Section */}
-      <section ref={screensRef} className="py-20 px-6 relative overflow-hidden">
+      <section id="about" ref={screensRef} className="py-20 px-6 relative overflow-hidden">
         <motion.div 
           style={{ y: parallaxY }}
           className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent"
@@ -345,7 +380,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 bg-primary text-primary-foreground">
+      <section id="pricing" className="py-12 px-6 bg-primary text-primary-foreground">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -365,17 +400,17 @@ export default function LandingPage() {
             className="text-base px-8 py-3 font-medium"
             onClick={() => router.push('/signup')}
           >
-            Contact Sales
+            Start Free Trial
           </Button>
         </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/20 py-12 px-6">
+      <footer className="border-t border-border/20 py-6 px-6">
         <div className="container mx-auto text-center text-muted-foreground">
-          <p className="mb-2 font-medium">Coogi</p>
+          <p className="mb-1 font-medium">Coogi</p>
           <p className="text-sm">Premium AI-Powered Lead Generation Platform</p>
-          <p className="text-xs mt-4">&copy; 2025 Coogi. All rights reserved.</p>
+          <p className="text-xs mt-2">&copy; 2025 Coogi. All rights reserved.</p>
         </div>
       </footer>
     </div>
