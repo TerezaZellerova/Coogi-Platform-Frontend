@@ -6,6 +6,7 @@ import { motion, useInView, useScroll, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle-clean'
 import { useCountUp } from '@/hooks/use-count-up'
+import LiveDemo from '@/components/LiveDemo'
 
 export default function LandingPage() {
   const router = useRouter()
@@ -299,11 +300,9 @@ export default function LandingPage() {
           
           <motion.div 
             variants={itemVariants}
-            className="parallax-frame mx-auto max-w-4xl"
+            className="parallax-frame mx-auto max-w-6xl"
           >
-            <div className="w-full h-64 md:h-96 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center border border-border/20">
-              <p className="text-muted-foreground">Dashboard Preview</p>
-            </div>
+            <LiveDemo />
           </motion.div>
         </motion.div>
       </section>
