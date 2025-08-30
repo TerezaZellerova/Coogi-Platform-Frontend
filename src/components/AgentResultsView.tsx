@@ -198,7 +198,7 @@ export default function AgentResultsView({ agent, isOpen, onCloseAction }: Agent
                         <p className="text-sm text-muted-foreground">{totalJobs} jobs found across multiple platforms</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={onCloseAction}>
+                    <Button variant="outline" size="sm" onClick={() => router.push('/leads')}>
                       <ExternalLink className="w-3 h-3 mr-1" />
                       View in Lead Database
                     </Button>
@@ -212,7 +212,7 @@ export default function AgentResultsView({ agent, isOpen, onCloseAction }: Agent
                         <p className="text-sm text-muted-foreground">{totalContacts} verified decision makers</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={onCloseAction}>
+                    <Button variant="outline" size="sm" onClick={() => router.push('/leads')}>
                       <ExternalLink className="w-3 h-3 mr-1" />
                       View in Lead Database
                     </Button>
