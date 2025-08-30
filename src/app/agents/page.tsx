@@ -109,10 +109,30 @@ export default function AgentsPage() {
     loadAgents()
   }, [])
 
+  // Auto-refresh agents with updated data every 30 seconds
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const pollForUpdates = async () => {
+      try {
+        const fetchedAgents = await apiClient.getAllProgressiveAgents()
+        setAgents(fetchedAgents)
+      } catch (error) {
+        console.error('Error polling for agent updates:', error)
+      }
+    }
+
+    // Poll every 30 seconds for updates
+    const pollInterval = setInterval(pollForUpdates, 30000)
+    
+    return () => clearInterval(pollInterval)
+  }, [])
+
   const loadAgents = async () => {
     setLoading(true)
     try {
-      const fetchedAgents = await apiClient.getAgents()
+      // Load progressive agents instead of regular agents
+      const fetchedAgents = await apiClient.getAllProgressiveAgents()
       setAgents(fetchedAgents)
     } catch (error) {
       console.error('Error loading agents:', error)
@@ -150,7 +170,10 @@ export default function AgentsPage() {
         const response = await apiClient.createProgressiveAgent(
           enhancedQuery,
           parseInt(newAgent.hoursOld),
-          newAgent.customTags.trim() || undefined
+          newAgent.customTags.trim() || undefined,
+          newAgent.targetType,
+          newAgent.companySize,
+          newAgent.locationFilter.trim() || undefined
         )
         
         // Add to progressive agents list

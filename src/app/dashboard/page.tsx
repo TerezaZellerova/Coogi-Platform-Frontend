@@ -418,6 +418,29 @@ function DashboardContent() {
               {/* Desktop Navigation */}
               <div className="hidden lg:flex items-center space-x-2">
                 <ThemeToggle />
+                
+                {/* Development Toast Test Button */}
+                {process.env.NODE_ENV === 'development' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      const types = ['success', 'error', 'warning', 'info'] as const
+                      const type = types[Math.floor(Math.random() * types.length)]
+                      addToast({
+                        type,
+                        title: `Test ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+                        message: `This is a test ${type} notification to verify dark mode contrast`,
+                        duration: 6000
+                      })
+                    }}
+                    className="text-xs"
+                    aria-label="Test toast notifications"
+                  >
+                    🧪 Test Toast
+                  </Button>
+                )}
+                
                 <Button variant="outline" size="sm" onClick={() => router.push('/analytics')} aria-label="Go to Analytics page">
                   <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />
                   Analytics

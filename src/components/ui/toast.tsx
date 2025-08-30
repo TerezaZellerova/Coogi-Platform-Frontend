@@ -105,25 +105,25 @@ function ToastComponent({ toast }: { toast: Toast }) {
   return (
     <div
       className={cn(
-        'backdrop-blur-sm border rounded-lg p-4 min-w-80 max-w-96',
+        'border rounded-lg p-4 min-w-80 max-w-96',
         'flex items-start gap-3 transition-all duration-300 pointer-events-auto',
         'transform translate-x-full opacity-0',
-        'shadow-xl dark:shadow-2xl dark:shadow-black/50',
+        'shadow-2xl',
         isVisible && 'transform translate-x-0 opacity-100',
-        // High contrast dark mode with strong backgrounds
-        toast.type === 'success' && 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-500/40',
-        toast.type === 'error' && 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-500/40',
-        toast.type === 'warning' && 'bg-yellow-50 dark:bg-yellow-900/90 border-yellow-200 dark:border-yellow-500/40',
-        toast.type === 'info' && 'bg-blue-50 dark:bg-blue-900/90 border-blue-200 dark:border-blue-500/40'
+        // SOLID dark backgrounds with high contrast
+        toast.type === 'success' && 'bg-green-50 border-green-200 dark:bg-green-800 dark:border-green-500 dark:shadow-green-900/50',
+        toast.type === 'error' && 'bg-red-50 border-red-200 dark:bg-red-800 dark:border-red-500 dark:shadow-red-900/50',
+        toast.type === 'warning' && 'bg-yellow-50 border-yellow-200 dark:bg-yellow-800 dark:border-yellow-500 dark:shadow-yellow-900/50',
+        toast.type === 'info' && 'bg-blue-50 border-blue-200 dark:bg-blue-800 dark:border-blue-500 dark:shadow-blue-900/50'
       )}
     >
       <div className={cn(
         'flex-shrink-0 w-5 h-5 mt-0.5',
-        // Maximum contrast icons for better visibility
-        toast.type === 'success' && 'text-green-600 dark:text-green-200',
-        toast.type === 'error' && 'text-red-600 dark:text-red-200',
-        toast.type === 'warning' && 'text-yellow-600 dark:text-yellow-200',
-        toast.type === 'info' && 'text-blue-600 dark:text-blue-200'
+        // Bright colored icons for light mode, WHITE for dark mode
+        toast.type === 'success' && 'text-green-600 dark:text-white',
+        toast.type === 'error' && 'text-red-600 dark:text-white',
+        toast.type === 'warning' && 'text-yellow-600 dark:text-white',
+        toast.type === 'info' && 'text-blue-600 dark:text-white'
       )}>
         <Icon className="w-5 h-5" />
       </div>
@@ -132,22 +132,22 @@ function ToastComponent({ toast }: { toast: Toast }) {
         {toast.title && (
           <div className={cn(
             'font-semibold mb-1',
-            // Maximum contrast title text
-            toast.type === 'success' && 'text-green-800 dark:text-green-50',
-            toast.type === 'error' && 'text-red-800 dark:text-red-50',
-            toast.type === 'warning' && 'text-yellow-800 dark:text-yellow-50',
-            toast.type === 'info' && 'text-blue-800 dark:text-blue-50'
+            // Dark text for light mode, WHITE for dark mode
+            toast.type === 'success' && 'text-green-800 dark:text-white',
+            toast.type === 'error' && 'text-red-800 dark:text-white',
+            toast.type === 'warning' && 'text-yellow-800 dark:text-white',
+            toast.type === 'info' && 'text-blue-800 dark:text-white'
           )}>
             {toast.title}
           </div>
         )}
         <div className={cn(
           'text-sm',
-          // Maximum contrast message text
-          toast.type === 'success' && 'text-green-700 dark:text-green-100',
-          toast.type === 'error' && 'text-red-700 dark:text-red-100',
-          toast.type === 'warning' && 'text-yellow-700 dark:text-yellow-100',
-          toast.type === 'info' && 'text-blue-700 dark:text-blue-100'
+          // Dark text for light mode, WHITE for dark mode
+          toast.type === 'success' && 'text-green-700 dark:text-white',
+          toast.type === 'error' && 'text-red-700 dark:text-white',
+          toast.type === 'warning' && 'text-yellow-700 dark:text-white',
+          toast.type === 'info' && 'text-blue-700 dark:text-white'
         )}>
           {toast.message}
         </div>
@@ -157,11 +157,11 @@ function ToastComponent({ toast }: { toast: Toast }) {
         onClick={handleRemove}
         className={cn(
           'flex-shrink-0 transition-colors rounded-sm p-1',
-          // High contrast close button
-          toast.type === 'success' && 'text-green-600 hover:text-green-800 dark:text-green-100 dark:hover:text-green-50 hover:bg-green-100 dark:hover:bg-green-800/50',
-          toast.type === 'error' && 'text-red-600 hover:text-red-800 dark:text-red-100 dark:hover:text-red-50 hover:bg-red-100 dark:hover:bg-red-800/50',
-          toast.type === 'warning' && 'text-yellow-600 hover:text-yellow-800 dark:text-yellow-100 dark:hover:text-yellow-50 hover:bg-yellow-100 dark:hover:bg-yellow-800/50',
-          toast.type === 'info' && 'text-blue-600 hover:text-blue-800 dark:text-blue-100 dark:hover:text-blue-50 hover:bg-blue-100 dark:hover:bg-blue-800/50'
+          // Dark button for light mode, WHITE for dark mode
+          toast.type === 'success' && 'text-green-600 hover:text-green-800 hover:bg-green-100 dark:text-white dark:hover:text-gray-200 dark:hover:bg-green-700/50',
+          toast.type === 'error' && 'text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-white dark:hover:text-gray-200 dark:hover:bg-red-700/50',
+          toast.type === 'warning' && 'text-yellow-600 hover:text-yellow-800 hover:bg-yellow-100 dark:text-white dark:hover:text-gray-200 dark:hover:bg-yellow-700/50',
+          toast.type === 'info' && 'text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-white dark:hover:text-gray-200 dark:hover:bg-blue-700/50'
         )}
       >
         <X className="w-4 h-4" />

@@ -55,28 +55,28 @@ export function NotificationSystem({ notifications, onDismissAction }: Notificat
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-500" />
+        return <CheckCircle className="h-5 w-5 text-green-500 dark:text-white" />
       case 'error':
-        return <AlertCircle className="h-5 w-5 text-red-500" />
+        return <AlertCircle className="h-5 w-5 text-red-500 dark:text-white" />
       case 'stage_complete':
-        return <Zap className="h-5 w-5 text-blue-500" />
+        return <Zap className="h-5 w-5 text-blue-500 dark:text-white" />
       case 'info':
       default:
-        return <Info className="h-5 w-5 text-blue-500" />
+        return <Info className="h-5 w-5 text-blue-500 dark:text-white" />
     }
   }
 
   const getNotificationStyles = (type: Notification['type']) => {
     switch (type) {
       case 'success':
-        return 'bg-green-50 border-green-200 text-green-800'
+        return 'bg-green-50 border-green-200 text-green-800 dark:bg-green-800 dark:border-green-500 dark:text-white'
       case 'error':
-        return 'bg-red-50 border-red-200 text-red-800'
+        return 'bg-red-50 border-red-200 text-red-800 dark:bg-red-800 dark:border-red-500 dark:text-white'
       case 'stage_complete':
-        return 'bg-blue-50 border-blue-200 text-blue-800'
+        return 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-800 dark:border-blue-500 dark:text-white'
       case 'info':
       default:
-        return 'bg-blue-50 border-blue-200 text-blue-800'
+        return 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-800 dark:border-blue-500 dark:text-white'
     }
   }
 
@@ -94,7 +94,7 @@ export function NotificationSystem({ notifications, onDismissAction }: Notificat
               : 'translate-x-full opacity-0'
             }
             ${getNotificationStyles(notification.type)}
-            border rounded-lg p-4 shadow-lg backdrop-blur-sm
+            border rounded-lg p-4 shadow-lg backdrop-blur-sm dark:shadow-2xl dark:shadow-black/50
           `}
         >
           <div className="flex items-start gap-3">
@@ -114,7 +114,7 @@ export function NotificationSystem({ notifications, onDismissAction }: Notificat
               variant="ghost"
               size="sm"
               onClick={() => onDismissAction(notification.id)}
-              className="h-6 w-6 p-0 hover:bg-black/10"
+              className="h-6 w-6 p-0 hover:bg-black/10 dark:hover:bg-white/20 dark:text-white"
             >
               <X className="h-3 w-3" />
             </Button>

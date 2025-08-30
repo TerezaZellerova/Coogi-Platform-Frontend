@@ -771,7 +771,14 @@ class ApiClient {
   }
 
   // Progressive Agent Methods
-  async createProgressiveAgent(query: string, hoursOld: number = 24, customTags?: string): Promise<ProgressiveAgentResponse> {
+  async createProgressiveAgent(
+    query: string, 
+    hoursOld: number = 24, 
+    customTags?: string,
+    targetType: string = 'hiring_managers',
+    companySize: string = 'all',
+    locationFilter?: string
+  ): Promise<ProgressiveAgentResponse> {
     console.log('🚀 Creating progressive agent for instant LinkedIn results...')
     
     const response = await this.request('/api/agents/create-progressive', {
@@ -782,7 +789,10 @@ class ApiClient {
         enforce_salary: true,
         auto_generate_messages: true,
         create_campaigns: true,
-        custom_tags: customTags ? [customTags] : undefined
+        custom_tags: customTags ? [customTags] : undefined,
+        target_type: targetType,
+        company_size: companySize,
+        location_filter: locationFilter
       })
     })
 

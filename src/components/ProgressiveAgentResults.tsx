@@ -323,7 +323,35 @@ export function ProgressiveAgentResults({ agent, trigger }: ProgressiveAgentResu
                 className="w-full pl-10 pr-4 py-2 border rounded-md text-sm bg-background dark:bg-background"
               />
             </div>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                const data = {
+                  agent: agent.query,
+                  linkedinJobs: agent.staged_results.linkedin_jobs,
+                  otherJobs: agent.staged_results.other_jobs,
+                  contacts: agent.staged_results.verified_contacts,
+                  campaigns: agent.staged_results.campaigns,
+                  totalStats: {
+                    totalJobs: agent.staged_results.total_jobs,
+                    totalContacts: agent.staged_results.total_contacts,
+                    totalCampaigns: agent.staged_results.total_campaigns
+                  },
+                  exportedAt: new Date().toISOString()
+                }
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `agent-results-${agent.id}-${new Date().toISOString().split('T')[0]}.json`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+              }}
+            >
               <Download className="h-4 w-4 mr-1" />
               Export
             </Button>

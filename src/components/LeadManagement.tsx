@@ -152,7 +152,7 @@ export default function LeadManagement() {
       if (filteredLeads.length === 0) {
         console.warn('No leads to export')
         // Use a better notification instead of alert
-        if (typeof window !== 'undefined' && window.alert) {
+        if (typeof window !== 'undefined') {
           alert('No leads to export. Please make sure you have data loaded.')
         }
         return
@@ -207,9 +207,9 @@ export default function LeadManagement() {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
       
       // Use different download methods for better compatibility
-      if (navigator.msSaveBlob) {
+      if ((navigator as any).msSaveBlob) {
         // IE 10+
-        navigator.msSaveBlob(blob, `coogi-leads-${new Date().toISOString().split('T')[0]}.csv`)
+        (navigator as any).msSaveBlob(blob, `coogi-leads-${new Date().toISOString().split('T')[0]}.csv`)
       } else {
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
@@ -235,7 +235,7 @@ export default function LeadManagement() {
       console.log('✅ CSV export completed successfully')
     } catch (error) {
       console.error('Error exporting leads:', error)
-      if (typeof window !== 'undefined' && window.alert) {
+      if (typeof window !== 'undefined') {
         alert('Failed to export leads. Please try again.')
       }
     } finally {
@@ -265,7 +265,7 @@ export default function LeadManagement() {
     } catch (error) {
       console.error('Error copying to clipboard:', error)
       // Fallback: show the URL in an alert
-      if (typeof window !== 'undefined' && window.prompt) {
+      if (typeof window !== 'undefined') {
         window.prompt('Copy this URL:', text)
       }
     }
