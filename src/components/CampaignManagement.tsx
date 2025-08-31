@@ -388,22 +388,22 @@ export default function CampaignManagement() {
 
       {/* Campaign Creation Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-background border-border">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-foreground">
               <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
                 <Mail className="w-4 h-4 text-white" />
               </div>
               Create New Campaign
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-muted-foreground">
               Create a new email campaign for your outreach efforts. Choose a descriptive name that helps you identify the campaign purpose.
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="campaign-name">Campaign Name</Label>
+              <Label htmlFor="campaign-name" className="text-foreground">Campaign Name</Label>
               <Input
                 id="campaign-name"
                 placeholder="e.g., Q1 2024 SaaS Prospects"
@@ -414,11 +414,11 @@ export default function CampaignManagement() {
                     handleCreateCampaign()
                   }
                 }}
-                className="col-span-3"
+                className="col-span-3 bg-background border-border text-foreground placeholder:text-muted-foreground"
                 disabled={actionLoading === 'create'}
               />
               {newCampaignName.trim() && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Campaign will be created with name: "{newCampaignName.trim()}"
                 </p>
               )}
