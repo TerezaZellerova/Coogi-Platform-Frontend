@@ -20,7 +20,11 @@ import {
   RefreshCw,
   Plus,
   Search,
-  X
+  X,
+  Calendar,
+  Clock,
+  User,
+  Info
 } from 'lucide-react'
 
 export default function CampaignManagement() {
@@ -29,6 +33,8 @@ export default function CampaignManagement() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
   const [newCampaignName, setNewCampaignName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -93,6 +99,16 @@ export default function CampaignManagement() {
     setSearchQuery('')
   }
 
+  const openCampaignDetails = (campaign: Campaign) => {
+    setSelectedCampaign(campaign)
+    setShowDetailsModal(true)
+  }
+
+  const closeCampaignDetails = () => {
+    setShowDetailsModal(false)
+    setSelectedCampaign(null)
+  }
+
   const getStatusBadge = (status: Campaign['status']) => {
     const variants = {
       active: 'default',
@@ -100,9 +116,9 @@ export default function CampaignManagement() {
       draft: 'outline'
     }
     const colors = {
-      active: 'text-green-600',
-      paused: 'text-yellow-600',
-      draft: 'text-gray-600'
+      active: 'text-green-600 dark:text-green-400',
+      paused: 'text-yellow-600 dark:text-yellow-400',
+      draft: 'text-gray-600 dark:text-gray-400'
     }
     return (
       <Badge variant={variants[status] as any} className={colors[status]}>
@@ -122,20 +138,20 @@ export default function CampaignManagement() {
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+        <Card className="shadow-lg border-0 bg-white dark:bg-slate-900 backdrop-blur-sm border-gray-200 dark:border-slate-700">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-40 mb-2"></div>
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-56"></div>
+                <div className="h-6 bg-gray-200 dark:bg-slate-700 rounded w-40 mb-2"></div>
+                <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-56"></div>
               </div>
-              <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded w-32"></div>
+              <div className="h-9 bg-gray-200 dark:bg-slate-700 rounded w-32"></div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="bg-white dark:bg-slate-900">
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-16 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                <div key={i} className="h-16 bg-gray-200 dark:bg-slate-700 rounded"></div>
               ))}
             </div>
           </CardContent>
@@ -147,17 +163,17 @@ export default function CampaignManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+      <Card className="shadow-lg border-0 bg-white dark:bg-slate-900 backdrop-blur-sm border-gray-200 dark:border-slate-700">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
+              <CardTitle className="flex items-center gap-2 text-xl text-gray-900 dark:text-slate-100">
                 <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
                   <Mail className="w-5 h-5 text-white" />
                 </div>
                 Email Campaigns
               </CardTitle>
-              <CardDescription className="mt-2">
+              <CardDescription className="mt-2 text-gray-600 dark:text-slate-300">
                 Manage your email outreach campaigns with Instantly.ai integration • {campaigns.length} total campaigns
               </CardDescription>
             </div>
@@ -167,7 +183,7 @@ export default function CampaignManagement() {
                 size="sm"
                 onClick={loadCampaigns}
                 disabled={loading}
-                className="shadow-sm hover:shadow-md transition-all duration-200"
+                className="shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -190,26 +206,26 @@ export default function CampaignManagement() {
             {/* Search Bar */}
             <div className="mb-6">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                 <Input
                   placeholder="Search campaigns by name, status, or ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-gray-300 dark:border-slate-600 placeholder:text-gray-500 dark:placeholder:text-slate-400"
                 />
                 {searchQuery && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearSearch}
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 )}
               </div>
               {searchQuery && (
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-600 dark:text-slate-300 mt-2">
                   Showing {filteredCampaigns.length} of {campaigns.length} campaigns
                 </p>
               )}
@@ -217,43 +233,43 @@ export default function CampaignManagement() {
 
             {/* Campaign Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-4 rounded-lg border border-blue-200 dark:border-blue-700/50">
                 <div className="flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-blue-600" />
+                  <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <div>
-                    <p className="text-sm text-blue-600 font-medium">Total Campaigns</p>
-                    <p className="text-2xl font-bold text-blue-700">{campaigns.length}</p>
+                    <p className="text-sm text-blue-600 dark:text-blue-300 font-medium">Total Campaigns</p>
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-200">{campaigns.length}</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg">
+              <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 p-4 rounded-lg border border-green-200 dark:border-green-700/50">
                 <div className="flex items-center gap-2">
-                  <Play className="w-5 h-5 text-green-600" />
+                  <Play className="w-5 h-5 text-green-600 dark:text-green-400" />
                   <div>
-                    <p className="text-sm text-green-600 font-medium">Active</p>
-                    <p className="text-2xl font-bold text-green-700">
+                    <p className="text-sm text-green-600 dark:text-green-300 font-medium">Active</p>
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-200">
                       {campaigns.filter(c => c.status === 'active').length}
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg">
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 p-4 rounded-lg border border-purple-200 dark:border-purple-700/50">
                 <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-purple-600" />
+                  <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   <div>
-                    <p className="text-sm text-purple-600 font-medium">Total Leads</p>
-                    <p className="text-2xl font-bold text-purple-700">
+                    <p className="text-sm text-purple-600 dark:text-purple-300 font-medium">Total Leads</p>
+                    <p className="text-2xl font-bold text-purple-700 dark:text-purple-200">
                       {campaigns.reduce((sum, c) => sum + c.leads_count, 0)}
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg">
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 p-4 rounded-lg border border-orange-200 dark:border-orange-700/50">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-orange-600" />
+                  <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                   <div>
-                    <p className="text-sm text-orange-600 font-medium">Avg. Open Rate</p>
-                    <p className="text-2xl font-bold text-orange-700">
+                    <p className="text-sm text-orange-600 dark:text-orange-300 font-medium">Avg. Open Rate</p>
+                    <p className="text-2xl font-bold text-orange-700 dark:text-orange-200">
                       {campaigns.length > 0 
                         ? Math.round(campaigns.reduce((sum, c) => sum + (c.open_rate || 0), 0) / campaigns.length)
                         : 0
@@ -265,63 +281,61 @@ export default function CampaignManagement() {
             </div>
 
             {/* Campaigns Table */}
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-hidden bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-gray-50 dark:bg-slate-900">
                   <TableRow>
-                    <TableHead>Campaign Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Leads</TableHead>
-                    <TableHead>Open Rate</TableHead>
-                    <TableHead>Reply Rate</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-gray-700 dark:text-slate-300 font-medium">Campaign Name</TableHead>
+                    <TableHead className="text-gray-700 dark:text-slate-300 font-medium">Status</TableHead>
+                    <TableHead className="text-gray-700 dark:text-slate-300 font-medium">Leads</TableHead>
+                    <TableHead className="text-gray-700 dark:text-slate-300 font-medium">Open Rate</TableHead>
+                    <TableHead className="text-gray-700 dark:text-slate-300 font-medium">Reply Rate</TableHead>
+                    <TableHead className="text-gray-700 dark:text-slate-300 font-medium">Created</TableHead>
+                    <TableHead className="text-gray-700 dark:text-slate-300 font-medium">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCampaigns.length > 0 ? (
                     filteredCampaigns.map((campaign) => (
-                      <TableRow key={campaign.id} className="hover:bg-gray-50">
-                        <TableCell>
+                      <TableRow key={campaign.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-800">
+                        <TableCell className="text-gray-900 dark:text-slate-100">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Mail className="w-4 h-4 text-blue-600" />
+                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
+                              <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
-                              <div className="font-medium">{campaign.name}</div>
+                              <div className="font-medium text-gray-900 dark:text-slate-100">{campaign.name}</div>
                               {campaign.batch_id && (
-                                <div className="text-xs text-gray-500">ID: {campaign.batch_id}</div>
+                                <div className="text-xs text-gray-600 dark:text-slate-400">ID: {campaign.batch_id}</div>
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-gray-900 dark:text-slate-100">
                           {getStatusBadge(campaign.status)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-gray-900 dark:text-slate-100">
                           <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4 text-gray-400" />
+                            <Users className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                             {campaign.leads_count}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-gray-900 dark:text-slate-100">
                           {campaign.open_rate ? `${campaign.open_rate}%` : 'N/A'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-gray-900 dark:text-slate-100">
                           {campaign.reply_rate ? `${campaign.reply_rate}%` : 'N/A'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-gray-900 dark:text-slate-100">
                           {formatDate(campaign.created_at)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-gray-900 dark:text-slate-100">
                           <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                // In production, this would open campaign details
-                                alert('Campaign details coming soon')
-                              }}
+                              onClick={() => openCampaignDetails(campaign)}
+                              className="hover:bg-gray-100 dark:hover:bg-slate-600"
                             >
                               <BarChart3 className="w-4 h-4" />
                             </Button>
@@ -332,6 +346,7 @@ export default function CampaignManagement() {
                                 // In production, this would open in Instantly.ai
                                 window.open('https://instantly.ai', '_blank')
                               }}
+                              className="hover:bg-gray-100 dark:hover:bg-slate-600"
                             >
                               <ExternalLink className="w-4 h-4" />
                             </Button>
@@ -340,23 +355,23 @@ export default function CampaignManagement() {
                       </TableRow>
                     ))
                   ) : (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableRow className="bg-white dark:bg-slate-800">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-600 dark:text-slate-400 bg-white dark:bg-slate-800">
                         {searchQuery ? (
                           <div>
-                            <Search className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                            <p>No campaigns match your search query</p>
+                            <Search className="w-8 h-8 mx-auto mb-2 text-gray-400 dark:text-slate-500" />
+                            <p className="text-gray-600 dark:text-slate-400">No campaigns match your search query</p>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={clearSearch}
-                              className="mt-2"
+                              className="mt-2 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700"
                             >
                               Clear search
                             </Button>
                           </div>
                         ) : (
-                          'No campaigns available'
+                          <span className="text-gray-600 dark:text-slate-400">No campaigns available</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -366,17 +381,17 @@ export default function CampaignManagement() {
             </div>
           </CardContent>
         ) : (
-          <CardContent>
-            <div className="text-center py-12">
-              <Mail className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No campaigns yet</h3>
-              <p className="text-gray-500 mb-4">
+          <CardContent className="bg-white dark:bg-slate-800">
+            <div className="text-center py-12 bg-white dark:bg-slate-800">
+              <Mail className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-slate-500" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">No campaigns yet</h3>
+              <p className="text-gray-600 dark:text-slate-400 mb-4">
                 Create your first email campaign to start reaching out to leads
               </p>
               <Button
                 onClick={openCreateModal}
                 disabled={actionLoading === 'create'}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Campaign
@@ -449,6 +464,183 @@ export default function CampaignManagement() {
                   Create Campaign
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Details Modal */}
+      <Dialog open={showDetailsModal} onOpenChange={closeCampaignDetails}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-slate-100">
+              Campaign Details
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-slate-400">
+              View campaign information and performance metrics
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedCampaign && (
+            <div className="space-y-6">
+              {/* Campaign Overview */}
+              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-3">
+                  Campaign Overview
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Campaign Name
+                    </Label>
+                    <p className="text-gray-900 dark:text-slate-100 mt-1">
+                      {selectedCampaign.name}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Subject Line
+                    </Label>
+                    <p className="text-gray-900 dark:text-slate-100 mt-1">
+                      {selectedCampaign.subject || 'No subject set'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Status
+                    </Label>
+                    <div className="mt-1">
+                      {getStatusBadge(selectedCampaign.status)}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Platform
+                    </Label>
+                    <p className="text-gray-900 dark:text-slate-100 mt-1">
+                      {selectedCampaign.platform || 'Instantly'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Metrics */}
+              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-3">
+                  Performance Metrics
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
+                    <Users className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                      {selectedCampaign.target_count}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Targets</p>
+                  </div>
+                  <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
+                    <Mail className="w-6 h-6 text-green-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                      {selectedCampaign.sent_count}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Sent</p>
+                  </div>
+                  <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
+                    <TrendingUp className="w-6 h-6 text-purple-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                      {selectedCampaign.open_count}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Opens</p>
+                  </div>
+                  <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
+                    <Mail className="w-6 h-6 text-orange-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                      {selectedCampaign.reply_count}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Replies</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Campaign Info */}
+              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-3">
+                  Campaign Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300 flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Created Date
+                    </Label>
+                    <p className="text-gray-900 dark:text-slate-100 mt-1">
+                      {formatDate(selectedCampaign.created_at)}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Last Updated
+                    </Label>
+                    <p className="text-gray-900 dark:text-slate-100 mt-1">
+                      {formatDate(selectedCampaign.updated_at)}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300 flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Agent ID
+                    </Label>
+                    <p className="text-gray-900 dark:text-slate-100 mt-1 font-mono text-sm">
+                      {selectedCampaign.agent_id}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Campaign Type
+                    </Label>
+                    <p className="text-gray-900 dark:text-slate-100 mt-1">
+                      {selectedCampaign.type}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Coming Soon Features */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-500 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      More Features Coming Soon
+                    </h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                      We're working on additional campaign features including:
+                    </p>
+                    <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                      <li>• Email content preview and editing</li>
+                      <li>• Individual contact details and status</li>
+                      <li>• Advanced analytics and performance charts</li>
+                      <li>• Campaign scheduling and automation</li>
+                      <li>• A/B testing capabilities</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeCampaignDetails} className="bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 border-gray-300 dark:border-slate-600">
+              Close
+            </Button>
+            <Button 
+              onClick={() => {
+                window.open('https://instantly.ai', '_blank')
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Open in Instantly
             </Button>
           </DialogFooter>
         </DialogContent>

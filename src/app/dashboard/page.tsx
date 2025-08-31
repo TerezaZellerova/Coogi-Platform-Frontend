@@ -159,22 +159,33 @@ function DashboardContent() {
       // Check backend connection first
       await checkBackendConnection()
       
-      // Load data using API client
-      const [statsData, agentsData] = await Promise.all([
-        apiClient.getDashboardStats(),
-        apiClient.getAgents()
-      ])
+      // Load stats (this should always work as it doesn't require auth)
+      try {
+        const statsData = await apiClient.getDashboardStats()
+        setStats(statsData)
+        console.log('✅ Dashboard stats loaded:', statsData)
+      } catch (statsError) {
+        console.error('❌ Failed to load dashboard stats:', statsError)
+      }
       
-      setStats(statsData)
+      // Load agents (this might fail due to auth issues, but don't let it break stats)
+      try {
+        const agentsData = await apiClient.getAgents()
+        
+        // Add agents to monitoring
+        agentsData.forEach(agent => {
+          if (agent.status === 'running' || agent.status === 'processing') {
+            addAgent(agent)
+          }
+        })
+        console.log('✅ Agents loaded:', agentsData.length)
+      } catch (agentsError) {
+        console.warn('⚠️ Failed to load agents (possibly auth issue):', agentsError)
+        // Don't set backendConnected to false just because agents failed
+      }
       
-      // Add agents to monitoring
-      agentsData.forEach(agent => {
-        if (agent.status === 'running' || agent.status === 'processing') {
-          addAgent(agent)
-        }
-      })
     } catch (error) {
-      console.error('Error loading dashboard data:', error)
+      console.error('❌ Critical error loading dashboard data:', error)
       setBackendConnected(false)
     }
   }
@@ -793,13 +804,18 @@ function DashboardContent() {
                                 <div className="flex items-center space-x-2">
                                   <Briefcase className="w-4 h-4 text-purple-500" />
                                   <span className="text-slate-600 dark:text-slate-400">
-                                    <span className="font-medium text-slate-900 dark:text-slate-100">{agent.total_jobs_found || 0}</span> jobs found
+                                    <span className="font-medium text-slate-900 dark:text-slate-100">
+                                      {((agent.staged_results?.linkedin_jobs?.length || 0) + 
+                                        (agent.staged_results?.other_jobs?.length || 0))}
+                                    </span> jobs found
                                   </span>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <Mail className="w-4 h-4 text-green-500" />
                                   <span className="text-slate-600 dark:text-slate-400">
-                                    <span className="font-medium text-slate-900 dark:text-slate-100">{agent.total_emails_found || 0}</span> emails verified
+                                    <span className="font-medium text-slate-900 dark:text-slate-100">
+                                      {agent.staged_results?.verified_contacts?.length || 0}
+                                    </span> emails verified
                                   </span>
                                 </div>
                               </div>

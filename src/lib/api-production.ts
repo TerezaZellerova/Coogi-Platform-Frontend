@@ -15,6 +15,18 @@ export interface Agent {
   processed_companies?: number
   start_time?: string
   end_time?: string
+  staged_results?: {
+    linkedin_jobs?: any[]
+    other_jobs?: any[]
+    verified_contacts?: any[]
+    campaigns?: any[]
+  }
+  stages?: Record<string, {
+    name: string
+    progress: number
+    results_count?: number
+  }>
+  total_progress?: number
 }
 
 export interface DashboardStats {
@@ -514,7 +526,21 @@ class ApiClient {
   // Campaign Management
   async getCampaigns(): Promise<Campaign[]> {
     try {
-      return await this.request('/api/campaigns')
+      const response = await this.request('/api/leads/campaigns')
+      // Transform the response to match the expected Campaign interface
+      if (response.success && response.data) {
+        return response.data.map((campaign: any) => ({
+          id: campaign.campaign_id || campaign.id,
+          name: campaign.name,
+          status: campaign.status,
+          leads_count: campaign.target_count || 0,
+          open_rate: (campaign.open_count / Math.max(campaign.sent_count, 1)) * 100 || 0,
+          reply_rate: (campaign.reply_count / Math.max(campaign.sent_count, 1)) * 100 || 0,
+          created_at: campaign.created_at,
+          batch_id: campaign.agent_id
+        }))
+      }
+      return []
     } catch (error) {
       console.error('Error fetching campaigns:', error)
       return []
