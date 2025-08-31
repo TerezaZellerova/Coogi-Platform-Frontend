@@ -174,7 +174,7 @@ export default function CampaignManagement() {
                 Email Campaigns
               </CardTitle>
               <CardDescription className="mt-2 text-gray-600 dark:text-slate-300">
-                Manage your email outreach campaigns with Instantly.ai integration • {campaigns.length} total campaigns
+                Manage your email outreach campaigns with SmartLead.ai integration • {campaigns.length} total campaigns
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -343,8 +343,8 @@ export default function CampaignManagement() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                // In production, this would open in Instantly.ai
-                                window.open('https://instantly.ai', '_blank')
+                                // In production, this would open in SmartLead.ai
+                                window.open('https://app.smartlead.ai', '_blank')
                               }}
                               className="hover:bg-gray-100 dark:hover:bg-slate-600"
                             >
@@ -518,7 +518,7 @@ export default function CampaignManagement() {
                       Platform
                     </Label>
                     <p className="text-gray-900 dark:text-slate-100 mt-1">
-                      {selectedCampaign.platform || 'Instantly'}
+                      {selectedCampaign.platform || 'SmartLead.ai'}
                     </p>
                   </div>
                 </div>
@@ -635,12 +635,12 @@ export default function CampaignManagement() {
             </Button>
             <Button 
               onClick={() => {
-                window.open('https://instantly.ai', '_blank')
+                window.open('https://app.smartlead.ai', '_blank')
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               <ExternalLink className="w-4 h-4 mr-2" />
-              Open in Instantly
+              Open in SmartLead
             </Button>
           </DialogFooter>
         </DialogContent>
