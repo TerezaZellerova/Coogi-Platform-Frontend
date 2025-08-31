@@ -63,7 +63,7 @@ export interface Campaign {
   created_at: string
   batch_id?: string
   subject?: string
-  platform?: string
+  platform?: string // 'SmartLead.ai' | 'Instantly.ai' | 'Internal'
   target_count?: number
   sent_count?: number
   open_count?: number
@@ -71,6 +71,12 @@ export interface Campaign {
   updated_at?: string
   agent_id?: string
   type?: string
+  // SmartLead.ai specific fields
+  campaign_id?: string
+  ai_personalized?: boolean
+  personalization_level?: string
+  from_email?: string
+  from_name?: string
 }
 
 export interface Lead {
@@ -619,17 +625,137 @@ class ApiClient {
 
   async createCampaign(name: string, leadIds: string[]): Promise<Campaign> {
     try {
-      const response = await this.request('/api/campaigns', {
+      // Primary: Use SmartLead.ai for campaign creation
+      const response = await this.request('/api/smartlead/create-campaign', {
         method: 'POST',
         body: JSON.stringify({
           name,
-          lead_ids: leadIds
+          leads: leadIds.map(id => ({ 
+            id, 
+            email: `lead-${id}@example.com`, // Placeholder - backend will populate real data
+            first_name: 'Lead',
+            last_name: 'Contact',
+            company: 'Target Company'
+          })),
+          email_template: "Hi {{first_name}},\n\nI hope this email finds you well. I wanted to reach out regarding potential opportunities at {{company}}.\n\nBest regards,\nCOOGI Recruiting Team",
+          subject: "Exciting Opportunities at {{company}}",
+          from_email: "noreply@coogi.ai",
+          from_name: "COOGI Recruiting Team"
         })
       })
 
-      return response
+      // Convert SmartLead response to Campaign format
+      return {
+        id: response.campaign_id || `sl_${Date.now()}`,
+        name: response.campaign_name || name,
+        status: 'active' as const,
+        leads_count: response.leads_added || 0,
+        created_at: response.timestamp || new Date().toISOString(),
+        platform: 'SmartLead.ai',
+        type: 'email_outreach',
+        target_count: response.leads_added || 0,
+        sent_count: 0,
+        open_count: 0,
+        reply_count: 0
+      }
     } catch (error) {
-      console.error('Error creating campaign:', error)
+      console.error('Error creating SmartLead campaign:', error)
+      
+      // Fallback to legacy endpoint if needed
+      try {
+        const fallbackResponse = await this.request('/api/campaigns', {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            lead_ids: leadIds
+          })
+        })
+        return fallbackResponse
+      } catch (fallbackError) {
+        console.error('Error creating fallback campaign:', fallbackError)
+        throw error
+      }
+    }
+ }
+
+  // SmartLead.ai Specific Methods
+  async getSmartleadCampaigns(): Promise<Campaign[]> {
+    try {
+      const response = await this.request('/api/smartlead/campaigns')
+      return response.campaigns || []
+    } catch (error) {
+      console.error('Error fetching SmartLead campaigns:', error)
+      return []
+    }
+  }
+
+  async getSmartleadCampaignStats(campaignId: string): Promise<any> {
+    try {
+      return await this.request(`/api/smartlead/campaign/${campaignId}/stats`)
+    } catch (error) {
+      console.error('Error fetching SmartLead campaign stats:', error)
+      return null
+    }
+  }
+
+  async pauseSmartleadCampaign(campaignId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      return await this.request(`/api/smartlead/campaign/${campaignId}/pause`, {
+        method: 'POST'
+      })
+    } catch (error) {
+      console.error('Error pausing SmartLead campaign:', error)
+      throw error
+    }
+  }
+
+  async resumeSmartleadCampaign(campaignId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      return await this.request(`/api/smartlead/campaign/${campaignId}/resume`, {
+        method: 'POST'
+      })
+    } catch (error) {
+      console.error('Error resuming SmartLead campaign:', error)
+      throw error
+    }
+  }
+
+  async createAIPersonalizedCampaign(
+    name: string, 
+    leads: any[], 
+    templateContext: string = "recruiting",
+    subjectTemplate: string = "Exciting Opportunities at {{company}}"
+  ): Promise<Campaign> {
+    try {
+      const response = await this.request('/api/smartlead/create-ai-campaign', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          leads,
+          template_context: templateContext,
+          subject_template: subjectTemplate,
+          from_email: "noreply@coogi.ai",
+          personalization_level: "high"
+        })
+      })
+
+      return {
+        id: response.campaign_id || `ai_${Date.now()}`,
+        name: response.campaign_name || name,
+        status: 'active' as const,
+        leads_count: response.leads_added || 0,
+        created_at: response.timestamp || new Date().toISOString(),
+        platform: 'SmartLead.ai',
+        type: 'ai_personalized',
+        ai_personalized: true,
+        personalization_level: response.personalization_level || 'high',
+        target_count: response.leads_added || 0,
+        sent_count: 0,
+        open_count: 0,
+        reply_count: 0
+      }
+    } catch (error) {
+      console.error('Error creating AI personalized campaign:', error)
       throw error
     }
   }
@@ -808,7 +934,28 @@ class ApiClient {
     }
   }
 
-  // Campaign Integration (from HTML templates)
+  // Campaign Integration - SmartLead.ai (Primary)
+  async sendToSmartlead(leadIds: string[], campaignName: string, emailTemplate: string = "", subject: string = ""): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.request('/api/smartlead/create-campaign', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: campaignName,
+          leads: leadIds.map(id => ({ id, email: '', name: '', company: '' })), // Will be populated by backend
+          email_template: emailTemplate || "Hi {{first_name}},\n\nI hope this email finds you well. I wanted to reach out regarding potential opportunities at {{company}}.\n\nBest regards,\nRecruiting Team",
+          subject: subject || "Exciting Opportunities at {{company}}",
+          from_email: "noreply@coogi.ai",
+          from_name: "COOGI Recruiting Team"
+        })
+      })
+      return response
+    } catch (error) {
+      console.error('Error sending to SmartLead:', error)
+      throw error
+    }
+  }
+
+  // Legacy Instantly.ai support (Fallback)
   async sendToInstantly(leadIds: string[], campaignName: string): Promise<{ success: boolean; message: string }> {
     try {
       const response = await this.request('/api/instantly/send', {

@@ -174,7 +174,7 @@ export default function CampaignManagement() {
                 Email Campaigns
               </CardTitle>
               <CardDescription className="mt-2 text-gray-600 dark:text-slate-300">
-                Manage your email outreach campaigns with SmartLead.ai integration • {campaigns.length} total campaigns
+                Manage your AI-powered email outreach campaigns with SmartLead.ai integration • {campaigns.length} total campaigns
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -343,8 +343,8 @@ export default function CampaignManagement() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                // In production, this would open in SmartLead.ai
-                                window.open('https://app.smartlead.ai', '_blank')
+                                // Open in SmartLead.ai dashboard
+                                window.open('https://app.smartlead.ai/app/dashboard', '_blank')
                               }}
                               className="hover:bg-gray-100 dark:hover:bg-slate-600"
                             >
@@ -519,6 +519,11 @@ export default function CampaignManagement() {
                     </Label>
                     <p className="text-gray-900 dark:text-slate-100 mt-1">
                       {selectedCampaign.platform || 'SmartLead.ai'}
+                      {selectedCampaign.ai_personalized && (
+                        <span className="ml-2 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full">
+                          AI Enhanced
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -533,28 +538,28 @@ export default function CampaignManagement() {
                   <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
                     <Users className="w-6 h-6 text-blue-500 mx-auto mb-2" />
                     <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                      {selectedCampaign.target_count}
+                      {selectedCampaign.target_count || selectedCampaign.leads_count || 0}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-slate-400">Targets</p>
                   </div>
                   <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
                     <Mail className="w-6 h-6 text-green-500 mx-auto mb-2" />
                     <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                      {selectedCampaign.sent_count}
+                      {selectedCampaign.sent_count || 0}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-slate-400">Sent</p>
                   </div>
                   <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
                     <TrendingUp className="w-6 h-6 text-purple-500 mx-auto mb-2" />
                     <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                      {selectedCampaign.open_count}
+                      {selectedCampaign.open_count || 0}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-slate-400">Opens</p>
                   </div>
                   <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
                     <Mail className="w-6 h-6 text-orange-500 mx-auto mb-2" />
                     <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                      {selectedCampaign.reply_count}
+                      {selectedCampaign.reply_count || 0}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-slate-400">Replies</p>
                   </div>
@@ -599,29 +604,74 @@ export default function CampaignManagement() {
                       Campaign Type
                     </Label>
                     <p className="text-gray-900 dark:text-slate-100 mt-1">
-                      {selectedCampaign.type}
+                      {selectedCampaign.type === 'ai_personalized' ? 'AI Personalized' : 
+                       selectedCampaign.type === 'email_outreach' ? 'Email Outreach' : 
+                       selectedCampaign.type || 'Standard Campaign'}
                     </p>
+                  </div>
+                  {selectedCampaign.ai_personalized && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                        AI Personalization Level
+                      </Label>
+                      <p className="text-gray-900 dark:text-slate-100 mt-1 capitalize">
+                        {selectedCampaign.personalization_level || 'High'}
+                      </p>
+                    </div>
+                  )}
+                  {selectedCampaign.from_email && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                        From Email
+                      </Label>
+                      <p className="text-gray-900 dark:text-slate-100 mt-1 font-mono text-sm">
+                        {selectedCampaign.from_email}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SmartLead.ai Features */}
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-purple-500 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-purple-900 dark:text-purple-100 mb-1">
+                      SmartLead.ai Enhanced Features
+                    </h4>
+                    <p className="text-sm text-purple-800 dark:text-purple-200 mb-2">
+                      Your campaigns now leverage SmartLead.ai's AI-powered features:
+                    </p>
+                    <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1">
+                      <li>• AI-powered email personalization and optimization</li>
+                      <li>• Advanced deliverability and spam prevention</li>
+                      <li>• Smart send time optimization</li>
+                      <li>• Real-time engagement tracking and analytics</li>
+                      <li>• Automated follow-up sequences</li>
+                      <li>• Integrated CRM and lead management</li>
+                    </ul>
                   </div>
                 </div>
               </div>
 
-              {/* Coming Soon Features */}
+              {/* More Features Coming Soon */}
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <Info className="w-5 h-5 text-blue-500 mt-0.5" />
                   <div>
                     <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                      More Features Coming Soon
+                      Additional Features Coming Soon
                     </h4>
                     <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
-                      We're working on additional campaign features including:
+                      We're working on additional integration features:
                     </p>
                     <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                      <li>• Email content preview and editing</li>
-                      <li>• Individual contact details and status</li>
-                      <li>• Advanced analytics and performance charts</li>
-                      <li>• Campaign scheduling and automation</li>
-                      <li>• A/B testing capabilities</li>
+                      <li>• Direct email content preview and editing</li>
+                      <li>• Individual contact status tracking</li>
+                      <li>• Advanced analytics dashboard integration</li>
+                      <li>• Automated campaign optimization suggestions</li>
+                      <li>• Multi-platform campaign management</li>
                     </ul>
                   </div>
                 </div>
@@ -635,7 +685,8 @@ export default function CampaignManagement() {
             </Button>
             <Button 
               onClick={() => {
-                window.open('https://app.smartlead.ai', '_blank')
+                // Open in SmartLead.ai dashboard
+                window.open('https://app.smartlead.ai/app/dashboard', '_blank')
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
