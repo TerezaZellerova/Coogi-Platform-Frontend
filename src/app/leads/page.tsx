@@ -48,8 +48,14 @@ export default function LeadsPage() {
   const [exporting, setExporting] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
-  const [activeTab, setActiveTab] = useState<'all' | 'jobs' | 'contacts'>('all')
-  const [stats, setStats] = useState({ jobs: 0, contacts: 0, total: 0 })
+  const [activeTab, setActiveTab] = useState<'all' | 'jobs' | 'contacts' | 'linkedin' | 'other'>('all')
+  const [stats, setStats] = useState({ 
+    jobs: 0, 
+    contacts: 0, 
+    total: 0, 
+    linkedinJobs: 0, 
+    otherJobs: 0 
+  })
 
   useEffect(() => {
     loadLeads()
@@ -58,24 +64,41 @@ export default function LeadsPage() {
   const loadLeads = async () => {
     setLoading(true)
     try {
-      // Fetch both jobs and contacts from progressive agents
-      const [jobsResponse, contactsResponse] = await Promise.all([
-        apiClient.getProgressiveJobs(200),
+      // Fetch LinkedIn jobs, other jobs, and contacts separately
+      const [linkedinResponse, otherResponse, contactsResponse] = await Promise.all([
+        apiClient.getLinkedInJobs(200),
+        apiClient.getOtherJobs(200),
         apiClient.getProgressiveContacts(200)
       ])
 
       const combinedLeads: CombinedLead[] = []
 
-      // Add jobs as leads
-      if (jobsResponse.success) {
-        jobsResponse.data.forEach((job: ProgressiveJob) => {
+      // Add LinkedIn jobs as leads
+      if (linkedinResponse.success) {
+        linkedinResponse.data.forEach((job: ProgressiveJob) => {
           combinedLeads.push({
-            id: `job_${job.id}`,
+            id: `linkedin_job_${job.id}`,
             type: 'job',
             title: job.title,
             company: job.company,
             location: job.location,
-            source: job.site,
+            source: 'LinkedIn',
+            url: job.url,
+            created_at: job.created_at
+          })
+        })
+      }
+
+      // Add other jobs as leads
+      if (otherResponse.success) {
+        otherResponse.data.forEach((job: ProgressiveJob) => {
+          combinedLeads.push({
+            id: `other_job_${job.id}`,
+            type: 'job',
+            title: job.title,
+            company: job.company,
+            location: job.location,
+            source: job.site || 'Other',
             url: job.url,
             created_at: job.created_at
           })
@@ -106,9 +129,11 @@ export default function LeadsPage() {
 
       setLeads(combinedLeads)
       setStats({
-        jobs: jobsResponse.data?.length || 0,
+        jobs: (linkedinResponse.data?.length || 0) + (otherResponse.data?.length || 0),
         contacts: contactsResponse.data?.length || 0,
-        total: combinedLeads.length
+        total: combinedLeads.length,
+        linkedinJobs: linkedinResponse.data?.length || 0,
+        otherJobs: otherResponse.data?.length || 0
       })
 
       if (combinedLeads.length === 0) {
@@ -141,7 +166,9 @@ export default function LeadsPage() {
     
     const matchesTab = activeTab === 'all' || 
       (activeTab === 'jobs' && lead.type === 'job') ||
-      (activeTab === 'contacts' && lead.type === 'contact')
+      (activeTab === 'contacts' && lead.type === 'contact') ||
+      (activeTab === 'linkedin' && lead.type === 'job' && lead.source === 'LinkedIn') ||
+      (activeTab === 'other' && lead.type === 'job' && lead.source !== 'LinkedIn')
     
     return matchesSearch && matchesTab
   })
@@ -316,13 +343,19 @@ export default function LeadsPage() {
             <div>
               <CardTitle>Leads ({filteredLeads.length})</CardTitle>
               <CardDescription>
-                {activeTab === 'all' ? 'All leads' : activeTab === 'jobs' ? 'Job opportunities' : 'Contact information'}
+                {activeTab === 'all' ? 'All leads' : 
+                 activeTab === 'jobs' ? 'Job opportunities' : 
+                 activeTab === 'linkedin' ? 'LinkedIn job opportunities' :
+                 activeTab === 'other' ? 'Other job board opportunities' :
+                 'Contact information'}
               </CardDescription>
             </div>
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'jobs' | 'contacts')}>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'jobs' | 'contacts' | 'linkedin' | 'other')}>
               <TabsList>
                 <TabsTrigger value="all">All ({stats.total})</TabsTrigger>
                 <TabsTrigger value="jobs">Jobs ({stats.jobs})</TabsTrigger>
+                <TabsTrigger value="linkedin">LinkedIn ({stats.linkedinJobs})</TabsTrigger>
+                <TabsTrigger value="other">Other Jobs ({stats.otherJobs})</TabsTrigger>
                 <TabsTrigger value="contacts">Contacts ({stats.contacts})</TabsTrigger>
               </TabsList>
             </Tabs>

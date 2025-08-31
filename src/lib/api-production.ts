@@ -405,7 +405,7 @@ class ApiClient {
 
   // Dashboard Stats - Real backend data
   async getDashboardStats(): Promise<DashboardStats> {
-    return await this.request('/api/dashboard/stats')
+    return await this.request('/api/agents/dashboard/stats')
   }
 
   // Agent Management
@@ -811,8 +811,19 @@ class ApiClient {
   // Progressive Agent Data Methods
   async getProgressiveJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
     try {
-      const response = await this.request(`/api/leads/jobs?limit=${limit}`)
-      return { success: true, data: response.data || [] }
+      // Get both LinkedIn and other jobs separately
+      const [linkedinResponse, otherResponse] = await Promise.all([
+        this.request(`/api/leads/linkedin-jobs?limit=${Math.floor(limit / 2)}`),
+        this.request(`/api/leads/other-jobs?limit=${Math.floor(limit / 2)}`)
+      ])
+      
+      // Combine both types of jobs
+      const allJobs = [
+        ...(linkedinResponse.data || []),
+        ...(otherResponse.data || [])
+      ]
+      
+      return { success: true, data: allJobs }
     } catch (error) {
       console.error('Error fetching progressive jobs:', error)
       return { success: false, data: [] }
@@ -821,10 +832,31 @@ class ApiClient {
 
   async getProgressiveContacts(limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[] }> {
     try {
-      const response = await this.request(`/api/leads/contacts?limit=${limit}`)
+      const response = await this.request(`/api/leads/progressive-contacts?limit=${limit}`)
       return { success: true, data: response.data || [] }
     } catch (error) {
       console.error('Error fetching progressive contacts:', error)
+      return { success: false, data: [] }
+    }
+  }
+
+  // Separate methods for LinkedIn vs Other jobs
+  async getLinkedInJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
+    try {
+      const response = await this.request(`/api/leads/linkedin-jobs?limit=${limit}`)
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      console.error('Error fetching LinkedIn jobs:', error)
+      return { success: false, data: [] }
+    }
+  }
+
+  async getOtherJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
+    try {
+      const response = await this.request(`/api/leads/other-jobs?limit=${limit}`)
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      console.error('Error fetching other jobs:', error)
       return { success: false, data: [] }
     }
   }

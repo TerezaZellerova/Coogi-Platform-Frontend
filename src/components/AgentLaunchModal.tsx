@@ -60,6 +60,7 @@ export default function AgentLaunchModal({
   const [isCreating, setIsCreating] = useState(false)
   const [currentAgent, setCurrentAgent] = useState<ProgressiveAgent | null>(null)
   const [overallProgress, setOverallProgress] = useState(0)
+  const [isCompleted, setIsCompleted] = useState(false)
   
   // Real-time results state
   const [liveResults, setLiveResults] = useState<{
@@ -109,6 +110,7 @@ export default function AgentLaunchModal({
       setIsCreating(false)
       setCurrentAgent(null)
       setOverallProgress(0)
+      setIsCompleted(false)
       setLiveResults({ jobs: [], contacts: [], campaigns: [] })
       setStages(prev => prev.map(stage => ({ 
         ...stage, 
@@ -170,13 +172,11 @@ export default function AgentLaunchModal({
         // Check if agent is complete
         if (updatedAgent.status === 'completed') {
           setIsCreating(false)
+          setIsCompleted(true)
           setOverallProgress(100)
           onAgentCreatedAction(updatedAgent)
           
-          // Auto-close after showing completion for 2 seconds
-          setTimeout(() => {
-            onCloseAction()
-          }, 2000)
+          // Don't auto-close, let user review results
         } else if (updatedAgent.status === 'failed') {
           setIsCreating(false)
           onErrorAction('Agent creation failed')
@@ -268,12 +268,15 @@ export default function AgentLaunchModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <Rocket className="w-4 h-4 text-white" />
+              {isCompleted ? <CheckCircle className="w-4 h-4 text-white" /> : <Rocket className="w-4 h-4 text-white" />}
             </div>
-            {isCreating ? 'Launching Your Agent' : 'Create New Agent'}
+            {isCompleted ? 'Agent Completed Successfully!' : 
+             isCreating ? 'Launching Your Agent' : 'Create New Agent'}
           </DialogTitle>
           <DialogDescription>
-            {isCreating 
+            {isCompleted 
+              ? 'Your agent has finished searching and found the results below. You can view all details in the leads page.'
+              : isCreating 
               ? 'Your agent is running through multiple stages to find the best opportunities and contacts.'
               : 'Set up a new lead generation agent with custom parameters to find relevant job opportunities.'
             }
@@ -405,13 +408,26 @@ export default function AgentLaunchModal({
             {/* Live Results */}
             {currentAgent && liveResults && (
               <div className="space-y-4">
-                <h4 className="font-medium flex items-center gap-2">
+                <h4 className={`font-medium flex items-center gap-2 ${isCompleted ? 'text-lg' : ''}`}>
                   <Briefcase className="w-4 h-4" />
-                  Current Results
+                  {isCompleted ? 'Final Results' : 'Current Results'}
                 </h4>
                 
+                {isCompleted && (
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-semibold">Search Complete!</span>
+                    </div>
+                    <p className="text-sm text-green-600 dark:text-green-400">
+                      Your agent has successfully completed the search across multiple job platforms. 
+                      All results are now available in your leads database.
+                    </p>
+                  </div>
+                )}
+                
                 {/* Summary Cards */}
-                <div className="grid grid-cols-3 gap-3 text-center">
+                <div className={`grid grid-cols-3 gap-3 text-center ${isCompleted ? 'mb-6' : ''}`}>
                   <div className="bg-purple-50 dark:bg-purple-950/20 rounded-lg p-3">
                     <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                       {liveResults.jobs.length}
@@ -531,7 +547,10 @@ export default function AgentLaunchModal({
                       {/* Summary footer */}
                       {(liveResults.jobs.length > 3 || liveResults.contacts.length > 2 || liveResults.campaigns.length > 0) && (
                         <div className="text-xs text-muted-foreground text-center pt-2 border-t mt-2">
-                          Showing latest results • Full details available after completion
+                          {isCompleted 
+                            ? 'All results saved to your database • Click "View All Leads" to see everything'
+                            : 'Showing latest results • Full details available after completion'
+                          }
                         </div>
                       )}
                     </div>
@@ -542,7 +561,27 @@ export default function AgentLaunchModal({
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3 pt-4 border-t">
-              {overallProgress < 100 ? (
+              {isCompleted ? (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={onCloseAction}
+                    className="flex items-center gap-2"
+                  >
+                    Close
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      onCloseAction()
+                      window.location.href = '/leads'
+                    }}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 flex items-center gap-2"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    View All Leads
+                  </Button>
+                </>
+              ) : overallProgress < 100 ? (
                 <Button variant="outline" onClick={onCloseAction}>
                   Close & Run in Background
                 </Button>
