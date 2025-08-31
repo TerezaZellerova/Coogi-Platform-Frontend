@@ -405,7 +405,14 @@ class ApiClient {
 
   // Dashboard Stats - Real backend data
   async getDashboardStats(): Promise<DashboardStats> {
-    return await this.request('/api/agents/dashboard/stats')
+    const response = await this.request('/api/leads/dashboard-stats')
+    // Map the response format to expected DashboardStats format
+    return {
+      activeAgents: response.data.active_agents || 0,
+      totalRuns: response.data.total_campaigns || 0, // Use campaigns as "runs"
+      totalJobs: response.data.total_jobs || 0,
+      successRate: 100 // Default success rate, can be calculated later
+    }
   }
 
   // Agent Management
