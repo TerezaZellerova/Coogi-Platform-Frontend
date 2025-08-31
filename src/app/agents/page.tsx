@@ -115,6 +115,12 @@ export default function AgentsPage() {
     
     const pollForUpdates = async () => {
       try {
+        // Fetch updated progressive agents using the correct endpoint
+        const response = await fetch('https://coogi-backend-7yca.onrender.com/api/agents/progressive')
+        const fetchedProgressiveAgents = await response.json()
+        setProgressiveAgents(fetchedProgressiveAgents)
+        
+        // Also fetch legacy agents for the legacy tab
         const fetchedAgents = await apiClient.getAllProgressiveAgents()
         setAgents(fetchedAgents)
       } catch (error) {

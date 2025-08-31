@@ -580,21 +580,37 @@ class ApiClient {
   // Campaign Management
   async getCampaigns(): Promise<Campaign[]> {
     try {
-      const response = await this.request('/api/leads/campaigns')
-      // Transform the response to match the expected Campaign interface
-      if (response.success && response.data) {
-        return response.data.map((campaign: any) => ({
-          id: campaign.campaign_id || campaign.id,
-          name: campaign.name,
-          status: campaign.status,
-          leads_count: campaign.target_count || 0,
-          open_rate: (campaign.open_count / Math.max(campaign.sent_count, 1)) * 100 || 0,
-          reply_rate: (campaign.reply_count / Math.max(campaign.sent_count, 1)) * 100 || 0,
-          created_at: campaign.created_at,
-          batch_id: campaign.agent_id
-        }))
-      }
-      return []
+      // Get campaigns from progressive agents' staged_results
+      const agents = await this.getAgents()
+      const allCampaigns: Campaign[] = []
+      
+      agents.forEach((agent: Agent, agentIndex: number) => {
+        if (agent.staged_results?.campaigns) {
+          agent.staged_results.campaigns.forEach((campaign: any, campaignIndex: number) => {
+            allCampaigns.push({
+              id: campaign.campaign_id || `${agent.id}_campaign_${campaignIndex}`,
+              name: campaign.name || `Campaign ${campaignIndex + 1}`,
+              status: campaign.status || 'active',
+              leads_count: campaign.target_count || campaign.contacts?.length || 0,
+              open_rate: campaign.metrics?.open_rate || 0,
+              reply_rate: campaign.metrics?.reply_rate || 0,
+              created_at: campaign.created_at || agent.created_at,
+              batch_id: agent.id,
+              agent_id: agent.id,
+              subject: campaign.subject,
+              platform: campaign.platform,
+              target_count: campaign.target_count || campaign.contacts?.length || 0,
+              sent_count: campaign.sent_count || 0,
+              open_count: campaign.open_count || 0,
+              reply_count: campaign.reply_count || 0,
+              updated_at: campaign.updated_at || agent.updated_at,
+              type: campaign.type || 'linkedin'
+            })
+          })
+        }
+      })
+      
+      return allCampaigns
     } catch (error) {
       console.error('Error fetching campaigns:', error)
       return []

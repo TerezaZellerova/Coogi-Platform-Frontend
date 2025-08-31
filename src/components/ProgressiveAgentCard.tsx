@@ -45,6 +45,21 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
     if (agent.status === 'completed' || agent.status === 'failed') {
       setIsPolling(false)
       setConnectionStatus('connected')
+      
+      // Force a final update for completed agents to ensure we have the latest data
+      if (agent.status === 'completed') {
+        const fetchFinalUpdate = async () => {
+          try {
+            const response = await apiClient.getProgressiveAgent(agent.id)
+            if (response.agent && onUpdate) {
+              onUpdate(response.agent)
+            }
+          } catch (error) {
+            console.warn('Failed to fetch final agent update:', error)
+          }
+        }
+        fetchFinalUpdate()
+      }
       return
     }
 
