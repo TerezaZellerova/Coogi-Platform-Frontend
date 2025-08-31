@@ -77,19 +77,33 @@ export function ProgressiveAgentResults({ agent, trigger }: ProgressiveAgentResu
     }
   }
 
-  const filteredLinkedInJobs = agent.staged_results.linkedin_jobs.filter(job =>
+  // Combine LinkedIn jobs from both arrays
+  const allLinkedInJobs = [
+    ...(agent.staged_results.linkedin_jobs || []),
+    ...(agent.staged_results.other_jobs || []).filter(job => 
+      job.site?.toLowerCase().includes('linkedin') || 
+      job.url?.toLowerCase().includes('linkedin.com')
+    )
+  ];
+
+  const filteredLinkedInJobs = allLinkedInJobs.filter(job =>
     searchTerm === '' || 
     job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.location?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const filteredOtherJobs = agent.staged_results.other_jobs.filter(job =>
-    searchTerm === '' || 
-    job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.location?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Filter other jobs to exclude LinkedIn jobs
+  const filteredOtherJobs = (agent.staged_results.other_jobs || []).filter(job => {
+    const isLinkedIn = job.site?.toLowerCase().includes('linkedin') || 
+                      job.url?.toLowerCase().includes('linkedin.com');
+    const matchesSearch = searchTerm === '' || 
+      job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.location?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return !isLinkedIn && matchesSearch;
+  })
 
   const JobCard = ({ job, source = 'Unknown' }: { job: any, source?: string }) => (
     <Card key={job.id || Math.random()} className="mb-4 hover:shadow-md transition-shadow">
@@ -329,7 +343,7 @@ export function ProgressiveAgentResults({ agent, trigger }: ProgressiveAgentResu
               onClick={() => {
                 const data = {
                   agent: agent.query,
-                  linkedinJobs: agent.staged_results.linkedin_jobs,
+                  linkedinJobs: allLinkedInJobs,
                   otherJobs: agent.staged_results.other_jobs,
                   contacts: agent.staged_results.verified_contacts,
                   campaigns: agent.staged_results.campaigns,
@@ -362,7 +376,7 @@ export function ProgressiveAgentResults({ agent, trigger }: ProgressiveAgentResu
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="linkedin" className="flex items-center gap-1">
                 <LinkedinIcon className="h-4 w-4" />
-                LinkedIn ({agent.staged_results.linkedin_jobs.length})
+                LinkedIn ({allLinkedInJobs.length})
               </TabsTrigger>
               <TabsTrigger value="other" className="flex items-center gap-1">
                 <Briefcase className="h-4 w-4" />

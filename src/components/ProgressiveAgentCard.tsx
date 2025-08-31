@@ -403,7 +403,15 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
           </div>
           <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
             <div className="text-lg font-semibold text-green-600 dark:text-green-400">
-              {agent.staged_results.linkedin_jobs.length}
+              {(() => {
+                // Count LinkedIn jobs from both linkedin_jobs array and other_jobs array
+                const directLinkedInJobs = agent.staged_results.linkedin_jobs.length;
+                const linkedInJobsInOtherArray = agent.staged_results.other_jobs.filter(job => 
+                  job.site?.toLowerCase().includes('linkedin') || 
+                  job.url?.toLowerCase().includes('linkedin.com')
+                ).length;
+                return directLinkedInJobs + linkedInJobsInOtherArray;
+              })()}
             </div>
             <div className="text-xs text-green-600 dark:text-green-400">LinkedIn Jobs</div>
           </div>
@@ -422,53 +430,63 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
         </div>
 
         {/* LinkedIn Jobs Preview */}
-        {agent.staged_results.linkedin_jobs.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium text-gray-700">LinkedIn Jobs Preview</h4>
-              <Badge variant="outline" className="text-xs">
-                {agent.staged_results.linkedin_jobs.length} found
-              </Badge>
+        {(() => {
+          // Get LinkedIn jobs from both arrays
+          const directLinkedInJobs = agent.staged_results.linkedin_jobs || [];
+          const linkedInJobsInOther = (agent.staged_results.other_jobs || []).filter(job => 
+            job.site?.toLowerCase().includes('linkedin') || 
+            job.url?.toLowerCase().includes('linkedin.com')
+          );
+          const allLinkedInJobs = [...directLinkedInJobs, ...linkedInJobsInOther];
+          
+          return allLinkedInJobs.length > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-gray-700">LinkedIn Jobs Preview</h4>
+                <Badge variant="outline" className="text-xs">
+                  {allLinkedInJobs.length} found
+                </Badge>
+              </div>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {allLinkedInJobs.slice(0, 3).map((job, index) => (
+                  <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
+                    <div className="font-medium text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 dark:text-gray-200">{job.title}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-xs">{job.company} • {job.location}</div>
+                    {job.salary && (
+                      <div className="text-green-600 dark:text-green-400 text-xs font-medium mt-1">
+                        💰 {typeof job.salary === 'string' ? job.salary : 'Salary available'}
+                      </div>
+                    )}
+                    {job.url && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          window.open(job.url, '_blank')
+                        }}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Job
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {allLinkedInJobs.length > 3 && (
+                  <ProgressiveAgentResults 
+                    agent={agent}
+                    trigger={
+                      <div className="text-xs text-blue-600 dark:text-blue-400 text-center p-2 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded cursor-pointer">
+                        View all {allLinkedInJobs.length} LinkedIn jobs →
+                      </div>
+                    }
+                  />
+                )}
+              </div>
             </div>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {agent.staged_results.linkedin_jobs.slice(0, 3).map((job, index) => (
-                <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
-                  <div className="font-medium text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 dark:text-gray-200">{job.title}</div>
-                  <div className="text-gray-600 dark:text-gray-400 text-xs">{job.company} • {job.location}</div>
-                  {job.salary && (
-                    <div className="text-green-600 dark:text-green-400 text-xs font-medium mt-1">
-                      💰 {typeof job.salary === 'string' ? job.salary : 'Salary available'}
-                    </div>
-                  )}
-                  {job.url && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        window.open(job.url, '_blank')
-                      }}
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      View Job
-                    </Button>
-                  )}
-                </div>
-              ))}
-              {agent.staged_results.linkedin_jobs.length > 3 && (
-                <ProgressiveAgentResults 
-                  agent={agent}
-                  trigger={
-                    <div className="text-xs text-blue-600 dark:text-blue-400 text-center p-2 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded cursor-pointer">
-                      View all {agent.staged_results.linkedin_jobs.length} LinkedIn jobs →
-                    </div>
-                  }
-                />
-              )}
-            </div>
-          </div>
-        )}
+          ) : null;
+        })()}
 
         {/* Quick Actions */}
         <div className="flex gap-2 pt-2">
@@ -482,21 +500,31 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
             } 
           />
           
-          {agent.staged_results.linkedin_jobs.length > 0 && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                const jobsText = agent.staged_results.linkedin_jobs
-                  .map(job => `${job.title} at ${job.company} - ${job.location}\n${job.url || ''}`)
-                  .join('\n\n')
-                navigator.clipboard.writeText(jobsText)
-              }}
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Copy Jobs
-            </Button>
-          )}
+          {(() => {
+            // Get LinkedIn jobs from both arrays for copy button
+            const directLinkedInJobs = agent.staged_results.linkedin_jobs || [];
+            const linkedInJobsInOther = (agent.staged_results.other_jobs || []).filter(job => 
+              job.site?.toLowerCase().includes('linkedin') || 
+              job.url?.toLowerCase().includes('linkedin.com')
+            );
+            const allLinkedInJobs = [...directLinkedInJobs, ...linkedInJobsInOther];
+            
+            return allLinkedInJobs.length > 0 ? (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const jobsText = allLinkedInJobs
+                    .map(job => `${job.title} at ${job.company} - ${job.location}\n${job.url || ''}`)
+                    .join('\n\n')
+                  navigator.clipboard.writeText(jobsText)
+                }}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Copy LinkedIn Jobs
+              </Button>
+            ) : null;
+          })()}
         </div>
 
         {/* Final Stats */}
