@@ -582,7 +582,7 @@ export default function CampaignManagement() {
                       Last Updated
                     </Label>
                     <p className="text-gray-900 dark:text-slate-100 mt-1">
-                      {formatDate(selectedCampaign.updated_at)}
+                      {selectedCampaign.updated_at ? formatDate(selectedCampaign.updated_at) : 'Not available'}
                     </p>
                   </div>
                   <div>

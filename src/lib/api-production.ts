@@ -62,6 +62,15 @@ export interface Campaign {
   reply_rate?: number
   created_at: string
   batch_id?: string
+  subject?: string
+  platform?: string
+  target_count?: number
+  sent_count?: number
+  open_count?: number
+  reply_count?: number
+  updated_at?: string
+  agent_id?: string
+  type?: string
 }
 
 export interface Lead {
