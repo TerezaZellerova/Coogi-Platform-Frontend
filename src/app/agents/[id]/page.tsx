@@ -72,6 +72,7 @@ export default function AgentDetailPage() {
         query: `Agent ${agentId}`, // This would come from API
         status: 'running',
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         total_jobs_found: 0,
         total_emails_found: 0,
         hours_old: 24
