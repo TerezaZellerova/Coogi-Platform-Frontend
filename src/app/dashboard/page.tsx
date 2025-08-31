@@ -319,7 +319,9 @@ function DashboardContent() {
       paused: 'secondary',
       completed: 'outline',
       failed: 'destructive',
-      processing: 'default'
+      processing: 'default',
+      initializing: 'secondary',
+      enrichment_stage: 'default'
     }
     return <Badge variant={variants[status] as any}>{status}</Badge>
   }
