@@ -419,11 +419,11 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
           <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
             <div className="text-lg font-semibold text-green-600 dark:text-green-400">
               {(() => {
-                // Count LinkedIn jobs from both linkedin_jobs array and other_jobs array
-                const directLinkedInJobs = agent.staged_results.linkedin_jobs.length;
-                const linkedInJobsInOtherArray = agent.staged_results.other_jobs.filter(job => 
-                  job.site?.toLowerCase().includes('linkedin') || 
-                  job.url?.toLowerCase().includes('linkedin.com')
+                // Count LinkedIn jobs from both linkedin_jobs array and other_jobs array, exclude demo data
+                const directLinkedInJobs = (agent.staged_results.linkedin_jobs || []).filter(job => !job.is_demo).length;
+                const linkedInJobsInOtherArray = (agent.staged_results.other_jobs || []).filter(job => 
+                  (!job.is_demo) && (job.site?.toLowerCase().includes('linkedin') || 
+                  job.url?.toLowerCase().includes('linkedin.com'))
                 ).length;
                 return directLinkedInJobs + linkedInJobsInOtherArray;
               })()}
@@ -446,11 +446,11 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
 
         {/* LinkedIn Jobs Preview */}
         {(() => {
-          // Get LinkedIn jobs from both arrays
-          const directLinkedInJobs = agent.staged_results.linkedin_jobs || [];
+          // Get LinkedIn jobs from both arrays and filter out demo data
+          const directLinkedInJobs = (agent.staged_results.linkedin_jobs || []).filter(job => !job.is_demo);
           const linkedInJobsInOther = (agent.staged_results.other_jobs || []).filter(job => 
-            job.site?.toLowerCase().includes('linkedin') || 
-            job.url?.toLowerCase().includes('linkedin.com')
+            (!job.is_demo) && (job.site?.toLowerCase().includes('linkedin') || 
+            job.url?.toLowerCase().includes('linkedin.com'))
           );
           const allLinkedInJobs = [...directLinkedInJobs, ...linkedInJobsInOther];
           
@@ -516,11 +516,11 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
           />
           
           {(() => {
-            // Get LinkedIn jobs from both arrays for copy button
-            const directLinkedInJobs = agent.staged_results.linkedin_jobs || [];
+            // Get LinkedIn jobs from both arrays for copy button, excluding demo data
+            const directLinkedInJobs = (agent.staged_results.linkedin_jobs || []).filter(job => !job.is_demo);
             const linkedInJobsInOther = (agent.staged_results.other_jobs || []).filter(job => 
-              job.site?.toLowerCase().includes('linkedin') || 
-              job.url?.toLowerCase().includes('linkedin.com')
+              (!job.is_demo) && (job.site?.toLowerCase().includes('linkedin') || 
+              job.url?.toLowerCase().includes('linkedin.com'))
             );
             const allLinkedInJobs = [...directLinkedInJobs, ...linkedInJobsInOther];
             

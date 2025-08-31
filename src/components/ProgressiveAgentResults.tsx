@@ -77,12 +77,12 @@ export function ProgressiveAgentResults({ agent, trigger }: ProgressiveAgentResu
     }
   }
 
-  // Combine LinkedIn jobs from both arrays
+  // Combine LinkedIn jobs from both arrays and filter out demo data
   const allLinkedInJobs = [
-    ...(agent.staged_results.linkedin_jobs || []),
+    ...(agent.staged_results.linkedin_jobs || []).filter(job => !job.is_demo),
     ...(agent.staged_results.other_jobs || []).filter(job => 
-      job.site?.toLowerCase().includes('linkedin') || 
-      job.url?.toLowerCase().includes('linkedin.com')
+      (!job.is_demo) && (job.site?.toLowerCase().includes('linkedin') || 
+      job.url?.toLowerCase().includes('linkedin.com'))
     )
   ];
 
@@ -93,16 +93,17 @@ export function ProgressiveAgentResults({ agent, trigger }: ProgressiveAgentResu
     job.location?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Filter other jobs to exclude LinkedIn jobs
+  // Filter other jobs to exclude LinkedIn jobs and demo data
   const filteredOtherJobs = (agent.staged_results.other_jobs || []).filter(job => {
     const isLinkedIn = job.site?.toLowerCase().includes('linkedin') || 
                       job.url?.toLowerCase().includes('linkedin.com');
+    const isDemoData = job.is_demo;
     const matchesSearch = searchTerm === '' || 
       job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.location?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return !isLinkedIn && matchesSearch;
+    return !isLinkedIn && !isDemoData && matchesSearch;
   })
 
   const JobCard = ({ job, source = 'Unknown' }: { job: any, source?: string }) => (
