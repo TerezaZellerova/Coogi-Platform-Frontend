@@ -4,8 +4,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://coogi-backend-7yca
 export interface Agent {
   id: string
   query: string
-  status: 'running' | 'paused' | 'completed' | 'failed' | 'processing'
+  status: 'running' | 'paused' | 'completed' | 'failed' | 'processing' | 'initializing' | 'enrichment_stage'
   created_at: string
+  updated_at: string
   total_jobs_found: number
   total_emails_found: number
   hours_old?: number
@@ -15,18 +16,34 @@ export interface Agent {
   processed_companies?: number
   start_time?: string
   end_time?: string
+  total_progress?: number
   staged_results?: {
     linkedin_jobs?: any[]
     other_jobs?: any[]
     verified_contacts?: any[]
     campaigns?: any[]
+    total_jobs?: number
+    total_contacts?: number
+    total_campaigns?: number
   }
   stages?: Record<string, {
     name: string
+    status: string
     progress: number
     results_count?: number
+    started_at?: string
+    completed_at?: string
+    error_message?: string
   }>
-  total_progress?: number
+  target_type?: string
+  company_size?: string
+  location_filter?: string
+  final_stats?: {
+    total_jobs: number
+    total_contacts: number
+    total_campaigns: number
+    completion_time: string
+  }
 }
 
 export interface DashboardStats {
@@ -452,7 +469,34 @@ class ApiClient {
 
   // Agent Management
   async getAgents(): Promise<Agent[]> {
-    return await this.request('/api/agents')
+    try {
+      const response = await this.request('/api/agents/progressive')
+      
+      // Transform the progressive agent data to match our interface
+      return response.map((agent: any) => ({
+        id: agent.id,
+        query: agent.query,
+        status: agent.status,
+        created_at: agent.created_at,
+        updated_at: agent.updated_at,
+        total_jobs_found: agent.staged_results?.total_jobs || 0,
+        total_emails_found: agent.staged_results?.total_contacts || 0,
+        hours_old: agent.hours_old,
+        custom_tags: agent.custom_tags,
+        batch_id: agent.id,
+        total_progress: agent.total_progress,
+        staged_results: agent.staged_results,
+        stages: agent.stages,
+        target_type: agent.target_type,
+        company_size: agent.company_size,
+        location_filter: agent.location_filter,
+        final_stats: agent.final_stats
+      }))
+    } catch (error) {
+      console.error('Error fetching progressive agents:', error)
+      // Fallback to empty array if progressive agents endpoint fails
+      return []
+    }
   }
 
   async createAgent(query: string, hoursOld: number = 24, customTags?: string): Promise<{ agent: Agent, results: JobSearchResults }> {
@@ -479,6 +523,7 @@ class ApiClient {
       query: query,
       status: 'running', // Real agents start as running and may take time to complete
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       total_jobs_found: response.estimated_jobs || 0,
       total_emails_found: 0, // Will be updated as it processes
       hours_old: hoursOld,
@@ -860,8 +905,35 @@ class ApiClient {
     return await this.request(`/api/agents/progressive/${agentId}`)
   }
 
-  async getAllProgressiveAgents(): Promise<ProgressiveAgent[]> {
-    return await this.request('/api/agents/progressive')
+  async getAllProgressiveAgents(): Promise<Agent[]> {
+    try {
+      const response = await this.request('/api/agents/progressive')
+      
+      // Transform the progressive agent data to match our interface
+      return response.map((agent: any) => ({
+        id: agent.id,
+        query: agent.query,
+        status: agent.status,
+        created_at: agent.created_at,
+        updated_at: agent.updated_at,
+        total_jobs_found: agent.staged_results?.total_jobs || 0,
+        total_emails_found: agent.staged_results?.total_contacts || 0,
+        hours_old: agent.hours_old,
+        custom_tags: agent.custom_tags,
+        batch_id: agent.id,
+        total_progress: agent.total_progress,
+        staged_results: agent.staged_results,
+        stages: agent.stages,
+        target_type: agent.target_type,
+        company_size: agent.company_size,
+        location_filter: agent.location_filter,
+        final_stats: agent.final_stats
+      }))
+    } catch (error) {
+      console.error('Error fetching progressive agents:', error)
+      // Fallback to empty array if progressive agents endpoint fails
+      return []
+    }
   }
 
   // Progressive Agent Data Methods
