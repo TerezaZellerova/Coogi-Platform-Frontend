@@ -361,8 +361,31 @@ class ApiClient {
   }
 
   async signup(email: string, password: string) {
-    // For now, signup is the same as login since we only have test users
-    return this.login(email, password)
+    const response = await fetch(`${API_BASE}/api/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || 'Signup failed')
+    }
+
+    const data = await response.json()
+    
+    // Store authentication data
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('coogiAuth', JSON.stringify({
+        token: data.access_token,
+        email: data.user.email,
+        isAuthenticated: true
+      }))
+    }
+
+    return data
   }
 
   async logout() {
