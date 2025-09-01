@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { AuthProvider } from "@/contexts/AuthContext";
 import BackendKeepAlive from "@/components/BackendKeepAlive";
 
 const inter = Inter({
@@ -40,10 +41,12 @@ export default function RootLayout({
           defaultTheme="system"
           storageKey="coogi-theme"
         >
-          <BackendKeepAlive />
-          <ToastProvider>
-            {children}
-          </ToastProvider>
+          <AuthProvider>
+            <BackendKeepAlive />
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

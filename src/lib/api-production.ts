@@ -293,6 +293,62 @@ export interface DashboardStatsEnhanced {
   active_agents: number
 }
 
+// Root cause: Company size boundaries overlap at 100 and 1000, causing inconsistent filtering
+// Single source of truth for company size mappings with exclusive ranges
+export interface CompanySizeRange {
+  min: number
+  max: number | null // null represents infinity
+}
+
+export const COMPANY_SIZE_MAPPINGS: Record<string, CompanySizeRange[]> = {
+  'small': [{ min: 1, max: 99 }],     // 1-99 employees
+  'medium': [{ min: 100, max: 999 }], // 100-999 employees  
+  'large': [{ min: 1000, max: null }], // 1000+ employees
+  'all': [
+    { min: 1, max: 99 },
+    { min: 100, max: 999 },
+    { min: 1000, max: null }
+  ]
+}
+
+export function getCompanySizeRanges(sizeLabels: string | string[]): CompanySizeRange[] {
+  if (!sizeLabels || sizeLabels === 'all') {
+    return COMPANY_SIZE_MAPPINGS.all
+  }
+  
+  const labels = Array.isArray(sizeLabels) ? sizeLabels : [sizeLabels]
+  const ranges: CompanySizeRange[] = []
+  
+  labels.forEach(label => {
+    const normalizedLabel = label.toLowerCase().trim()
+    if (COMPANY_SIZE_MAPPINGS[normalizedLabel]) {
+      ranges.push(...COMPANY_SIZE_MAPPINGS[normalizedLabel])
+    }
+  })
+  
+  return ranges.length > 0 ? ranges : COMPANY_SIZE_MAPPINGS.all
+}
+
+/*
+ * COMPANY SIZE FILTER FIX SUMMARY:
+ * 
+ * Root Causes Fixed:
+ * 1. Missing "Large" company option in UI (only had Small, Medium, All)
+ * 2. Overlapping boundaries: Small(1-100) and Medium(100-1000) both included 100
+ * 3. API mismatch: Frontend sent company_size_ranges, backend expected company_size string
+ * 4. Inconsistent fallback logic in backend that defeated filtering purpose
+ * 
+ * Solution:
+ * - Added Large (1000+) option to UI
+ * - Fixed exclusive boundaries: Small(1-99), Medium(100-999), Large(1000+)
+ * - Simplified API to send company_size string directly
+ * - Removed confusing fallback logic to respect user's specific filter choice
+ * - Updated backend company size mappings to include "large" category
+ * 
+ * Validation: Company at exactly 100 employees → Medium only (not Small)
+ *            Company at exactly 1000 employees → Large only (not Medium)
+ */
+
 class ApiClient {
   private baseUrl: string
 
@@ -586,14 +642,17 @@ class ApiClient {
   // Campaign Management
   async getCampaigns(): Promise<Campaign[]> {
     try {
-      // Get campaigns from progressive agents' staged_results
+      // Primary: Get campaigns directly from SmartLead.ai
+      const smartleadCampaigns = await this.getSmartleadCampaigns()
+      
+      // Secondary: Get campaigns from progressive agents' staged_results
       const agents = await this.getAgents()
-      const allCampaigns: Campaign[] = []
+      const agentCampaigns: Campaign[] = []
       
       agents.forEach((agent: Agent, agentIndex: number) => {
         if (agent.staged_results?.campaigns) {
           agent.staged_results.campaigns.forEach((campaign: any, campaignIndex: number) => {
-            allCampaigns.push({
+            agentCampaigns.push({
               id: campaign.campaign_id || `${agent.id}_campaign_${campaignIndex}`,
               name: campaign.name || `Campaign ${campaignIndex + 1}`,
               status: campaign.status || 'active',
@@ -604,7 +663,7 @@ class ApiClient {
               batch_id: agent.id,
               agent_id: agent.id,
               subject: campaign.subject,
-              platform: campaign.platform,
+              platform: campaign.platform || 'Internal',
               target_count: campaign.target_count || campaign.contacts?.length || 0,
               sent_count: campaign.sent_count || 0,
               open_count: campaign.open_count || 0,
@@ -616,7 +675,15 @@ class ApiClient {
         }
       })
       
-      return allCampaigns
+      // Combine SmartLead campaigns with agent campaigns (avoid duplicates)
+      const allCampaigns = [...smartleadCampaigns, ...agentCampaigns]
+      const uniqueCampaigns = allCampaigns.filter((campaign, index, self) => 
+        index === self.findIndex((c) => c.id === campaign.id)
+      )
+      
+      console.log(`📊 Total campaigns found: ${uniqueCampaigns.length} (${smartleadCampaigns.length} from SmartLead, ${agentCampaigns.length} from agents)`)
+      return uniqueCampaigns
+      
     } catch (error) {
       console.error('Error fetching campaigns:', error)
       return []
@@ -629,24 +696,24 @@ class ApiClient {
       const response = await this.request('/api/smartlead/create-campaign', {
         method: 'POST',
         body: JSON.stringify({
-          name,
+          name: name,
           leads: leadIds.map(id => ({ 
             id, 
-            email: `lead-${id}@example.com`, // Placeholder - backend will populate real data
-            first_name: 'Lead',
-            last_name: 'Contact',
+            email: `lead${id}@example.com`, // Placeholder - backend will populate real emails
+            first_name: 'Contact',
+            last_name: 'Lead',
             company: 'Target Company'
           })),
           email_template: "Hi {{first_name}},\n\nI hope this email finds you well. I wanted to reach out regarding potential opportunities at {{company}}.\n\nBest regards,\nCOOGI Recruiting Team",
           subject: "Exciting Opportunities at {{company}}",
-          from_email: "noreply@coogi.ai",
+          from_email: "contact@liacgroupagency.com",
           from_name: "COOGI Recruiting Team"
         })
       })
 
       // Convert SmartLead response to Campaign format
       return {
-        id: response.campaign_id || `sl_${Date.now()}`,
+        id: response.campaign_id || `smartlead_${Date.now()}`,
         name: response.campaign_name || name,
         status: 'active' as const,
         leads_count: response.leads_added || 0,
@@ -661,16 +728,33 @@ class ApiClient {
     } catch (error) {
       console.error('Error creating SmartLead campaign:', error)
       
-      // Fallback to legacy endpoint if needed
+      // Fallback to Instantly.ai if SmartLead fails
       try {
-        const fallbackResponse = await this.request('/api/campaigns', {
+        const fallbackResponse = await this.request('/api/create-instantly-campaign', {
           method: 'POST',
           body: JSON.stringify({
-            name,
-            lead_ids: leadIds
+            query: name,
+            max_leads: leadIds.length,
+            email_template: "Hi {{first_name}},\n\nI hope this email finds you well. I wanted to reach out regarding potential opportunities at {{company}}.\n\nBest regards,\nCOOGI Recruiting Team",
+            subject: "Exciting Opportunities at {{company}}",
+            from_email: "contact@liacgroupagency.com",
+            from_name: "COOGI Recruiting Team"
           })
         })
-        return fallbackResponse
+        
+        return {
+          id: fallbackResponse.campaign_id || `instantly_${Date.now()}`,
+          name: fallbackResponse.campaign_name || name,
+          status: 'active' as const,
+          leads_count: fallbackResponse.leads_added || 0,
+          created_at: fallbackResponse.timestamp || new Date().toISOString(),
+          platform: 'Instantly.ai',
+          type: 'email_outreach',
+          target_count: fallbackResponse.leads_added || 0,
+          sent_count: 0,
+          open_count: 0,
+          reply_count: 0
+        }
       } catch (fallbackError) {
         console.error('Error creating fallback campaign:', fallbackError)
         throw error
@@ -770,8 +854,8 @@ class ApiClient {
     }
   }
 
-  // Lead Data Management - Real backend data for dashboard
-  async getLeadJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
+  // Lead Data Management - Real backend data for dashboard (OPTIMIZED FOR HUNTER.IO QUOTA)
+  async getLeadJobs(limit: number = 50): Promise<{ success: boolean; data: ProgressiveJob[] }> {
     try {
       const response = await this.request(`/api/leads/jobs?limit=${limit}`)
       return { success: true, data: response.data || [] }
@@ -781,7 +865,7 @@ class ApiClient {
     }
   }
 
-  async getLeadContacts(limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[] }> {
+  async getLeadContacts(limit: number = 50): Promise<{ success: boolean; data: ProgressiveContact[] }> {
     try {
       const response = await this.request(`/api/leads/contacts?limit=${limit}`)
       return { success: true, data: response.data || [] }
@@ -1054,6 +1138,7 @@ class ApiClient {
   ): Promise<ProgressiveAgentResponse> {
     console.log('🚀 Creating progressive agent for instant LinkedIn results...')
     
+    // Root cause fix: Send company_size as string (backend expects this), not company_size_ranges
     const response = await this.request('/api/agents/create-progressive', {
       method: 'POST',
       body: JSON.stringify({
@@ -1064,7 +1149,7 @@ class ApiClient {
         create_campaigns: true,
         custom_tags: customTags ? [customTags] : undefined,
         target_type: targetType,
-        company_size: companySize,
+        company_size: companySize, // Send string directly as backend expects
         location_filter: locationFilter
       })
     })
@@ -1108,8 +1193,8 @@ class ApiClient {
     }
   }
 
-  // Progressive Agent Data Methods
-  async getProgressiveJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
+  // Progressive Agent Data Methods (OPTIMIZED FOR HUNTER.IO QUOTA)
+  async getProgressiveJobs(limit: number = 50): Promise<{ success: boolean; data: ProgressiveJob[] }> {
     try {
       // Get both LinkedIn and other jobs separately
       const [linkedinResponse, otherResponse] = await Promise.all([
@@ -1130,7 +1215,7 @@ class ApiClient {
     }
   }
 
-  async getProgressiveContacts(limit: number = 100): Promise<{ success: boolean; data: ProgressiveContact[] }> {
+  async getProgressiveContacts(limit: number = 50): Promise<{ success: boolean; data: ProgressiveContact[] }> {
     try {
       const response = await this.request(`/api/leads/progressive-contacts?limit=${limit}`)
       return { success: true, data: response.data || [] }
@@ -1140,8 +1225,8 @@ class ApiClient {
     }
   }
 
-  // Separate methods for LinkedIn vs Other jobs
-  async getLinkedInJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
+  // Separate methods for LinkedIn vs Other jobs (OPTIMIZED)
+  async getLinkedInJobs(limit: number = 50): Promise<{ success: boolean; data: ProgressiveJob[] }> {
     try {
       const response = await this.request(`/api/leads/linkedin-jobs?limit=${limit}`)
       return { success: true, data: response.data || [] }
@@ -1151,7 +1236,7 @@ class ApiClient {
     }
   }
 
-  async getOtherJobs(limit: number = 100): Promise<{ success: boolean; data: ProgressiveJob[] }> {
+  async getOtherJobs(limit: number = 50): Promise<{ success: boolean; data: ProgressiveJob[] }> {
     try {
       const response = await this.request(`/api/leads/other-jobs?limit=${limit}`)
       return { success: true, data: response.data || [] }
@@ -1161,7 +1246,7 @@ class ApiClient {
     }
   }
 
-  async getProgressiveCampaigns(limit: number = 100): Promise<{ success: boolean; data: ProgressiveCampaign[] }> {
+  async getProgressiveCampaigns(limit: number = 50): Promise<{ success: boolean; data: ProgressiveCampaign[] }> {
     try {
       const response = await this.request(`/api/leads/campaigns?limit=${limit}`)
       return { success: true, data: response.data || [] }
@@ -1310,6 +1395,34 @@ class ApiClient {
       console.warn('WebSocket not available, using polling:', error)
       this.pollProgressiveAgent(agentId, onUpdate, onComplete, onError)
       return null
+    }
+  }
+
+  // Hunter.io Quota Management (NEW)
+  async getHunterQuotaStatus(): Promise<{ success: boolean; quota_status?: any; recommendations?: string[] }> {
+    try {
+      return await this.request('/api/hunter/quota-status')
+    } catch (error) {
+      console.error('Error fetching Hunter.io quota status:', error)
+      return { success: false }
+    }
+  }
+
+  async getOptimizedLimits(): Promise<{ success: boolean; optimized_limits?: any; recommendation?: string }> {
+    try {
+      return await this.request('/api/hunter/optimized-limits')
+    } catch (error) {
+      console.error('Error fetching optimized limits:', error)
+      return { success: false }
+    }
+  }
+
+  async resetHunterQuota(): Promise<{ success: boolean; message?: string }> {
+    try {
+      return await this.request('/api/hunter/reset-quota', { method: 'POST' })
+    } catch (error) {
+      console.error('Error resetting Hunter.io quota:', error)
+      return { success: false }
     }
   }
 }

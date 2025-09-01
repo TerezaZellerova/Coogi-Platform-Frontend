@@ -62,6 +62,9 @@ export default function AgentsPage() {
   // Progressive agents state
   const [progressiveAgents, setProgressiveAgents] = useState<ProgressiveAgent[]>([])
   const [useProgressiveMode, setUseProgressiveMode] = useState(true) // Default to progressive mode
+  
+  // Store cleanup functions for active polling connections
+  const [activePollingCleanups, setActivePollingCleanups] = useState<Record<string, () => void>>({})
 
   // Notification system
   const { 
@@ -107,32 +110,21 @@ export default function AgentsPage() {
       return
     }
     loadAgents()
-  }, [])
-
-  // Auto-refresh agents with updated data every 30 seconds
-  useEffect(() => {
-    if (typeof window === 'undefined') return
     
-    const pollForUpdates = async () => {
-      try {
-        // Fetch updated progressive agents using the correct endpoint
-        const response = await fetch('https://coogi-backend-7yca.onrender.com/api/agents/progressive')
-        const fetchedProgressiveAgents = await response.json()
-        setProgressiveAgents(fetchedProgressiveAgents)
-        
-        // Also fetch legacy agents for the legacy tab
-        const fetchedAgents = await apiClient.getAllProgressiveAgents()
-        setAgents(fetchedAgents)
-      } catch (error) {
-        console.error('Error polling for agent updates:', error)
-      }
+    // Cleanup function to stop all active polling when component unmounts
+    return () => {
+      // Clean up all active polling connections
+      Object.values(activePollingCleanups).forEach(cleanup => {
+        if (typeof cleanup === 'function') {
+          cleanup()
+        }
+      })
     }
+  }, [activePollingCleanups])
 
-    // Poll every 30 seconds for updates
-    const pollInterval = setInterval(pollForUpdates, 30000)
-    
-    return () => clearInterval(pollInterval)
-  }, [])
+  // REMOVED: Conflicting auto-refresh polling that caused status contamination
+  // Individual agents now handle their own updates through ProgressiveAgentCard
+  // This eliminates race conditions and ensures proper agent isolation
 
   const loadAgents = async () => {
     setLoading(true)
@@ -165,9 +157,11 @@ export default function AgentsPage() {
       // Add company size filter if not 'all'
       if (newAgent.companySize !== 'all') {
         if (newAgent.companySize === 'small') {
-          enhancedQuery += ' at 1-100 employee companies'
+          enhancedQuery += ' at 1-99 employee companies'
         } else if (newAgent.companySize === 'medium') {
-          enhancedQuery += ' at 100-1000 employee companies'
+          enhancedQuery += ' at 100-999 employee companies'
+        } else if (newAgent.companySize === 'large') {
+          enhancedQuery += ' at 1000+ employee companies'
         }
       }
       
@@ -192,18 +186,19 @@ export default function AgentsPage() {
           response.agent.id
         )
         
-        // Track stage completion for notifications
+        // Track stage completion for notifications with agent ID isolation
         let previousStages = new Set<string>()
         
-        // Start polling for updates with error handling
+        // Start polling for updates with proper cleanup management
         const cleanupPolling = apiClient.pollProgressiveAgent(
           response.agent.id,
           (updatedAgent) => {
+            // Isolated update: only update the specific agent by ID
             setProgressiveAgents(prev => 
               prev.map(agent => agent.id === updatedAgent.id ? updatedAgent : agent)
             )
             
-            // Check for newly completed stages
+            // Check for newly completed stages (isolated to this agent)
             Object.entries(updatedAgent.stages).forEach(([stageName, stage]) => {
               if (stage.status === 'completed' && !previousStages.has(stageName)) {
                 previousStages.add(stageName)
@@ -224,9 +219,17 @@ export default function AgentsPage() {
             })
           },
           (completedAgent) => {
+            // Isolated completion: only update the specific completed agent
             setProgressiveAgents(prev => 
               prev.map(agent => agent.id === completedAgent.id ? completedAgent : agent)
             )
+            
+            // Clean up polling for this specific agent
+            setActivePollingCleanups(prev => {
+              const newCleanups = { ...prev }
+              delete newCleanups[completedAgent.id]
+              return newCleanups
+            })
             
             notifySuccess(
               'Agent Completed!',
@@ -238,6 +241,14 @@ export default function AgentsPage() {
           },
           (error) => {
             console.error('❌ Progressive agent polling error:', error)
+            
+            // Clean up polling for this agent on error
+            setActivePollingCleanups(prev => {
+              const newCleanups = { ...prev }
+              delete newCleanups[response.agent.id]
+              return newCleanups
+            })
+            
             notifyError(
               'Agent Connection Error',
               error,
@@ -245,6 +256,22 @@ export default function AgentsPage() {
             )
           }
         )
+        
+        // Store cleanup function for this specific agent
+        if (typeof cleanupPolling === 'function') {
+          setActivePollingCleanups(prev => ({
+            ...prev,
+            [response.agent.id]: cleanupPolling
+          }))
+        } else {
+          // Handle async cleanup function
+          cleanupPolling.then(cleanup => {
+            setActivePollingCleanups(prev => ({
+              ...prev,
+              [response.agent.id]: cleanup
+            }))
+          })
+        }
         
         console.log('🚀 Progressive agent created:', response.agent.id)
         
@@ -609,7 +636,7 @@ export default function AgentsPage() {
                     <Briefcase className="w-4 h-4" />
                     Company Size Target
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="flex items-center space-x-2 p-3 border rounded-lg">
                       <input
                         type="radio"
@@ -620,7 +647,7 @@ export default function AgentsPage() {
                         onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
                       />
                       <label htmlFor="smallCompanies" className="flex-1 cursor-pointer">
-                        <div className="font-medium text-sm">Small (1-100)</div>
+                        <div className="font-medium text-sm">Small (1-99)</div>
                         <div className="text-xs text-muted-foreground">Easy to reach decision makers</div>
                       </label>
                     </div>
@@ -634,8 +661,22 @@ export default function AgentsPage() {
                         onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
                       />
                       <label htmlFor="mediumCompanies" className="flex-1 cursor-pointer">
-                        <div className="font-medium text-sm">Medium (100-1000)</div>
+                        <div className="font-medium text-sm">Medium (100-999)</div>
                         <div className="text-xs text-muted-foreground">Growing companies</div>
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <input
+                        type="radio"
+                        id="largeCompanies"
+                        name="companySize"
+                        value="large"
+                        checked={newAgent.companySize === 'large'}
+                        onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
+                      />
+                      <label htmlFor="largeCompanies" className="flex-1 cursor-pointer">
+                        <div className="font-medium text-sm">Large (1000+)</div>
+                        <div className="text-xs text-muted-foreground">Enterprise companies</div>
                       </label>
                     </div>
                     <div className="flex items-center space-x-2 p-3 border rounded-lg">
@@ -819,11 +860,24 @@ export default function AgentsPage() {
                     key={agent.id} 
                     agent={agent}
                     onUpdate={(updatedAgent) => {
+                      // Isolated update: only update the specific agent by ID
                       setProgressiveAgents(prev => 
                         prev.map(a => a.id === updatedAgent.id ? updatedAgent : a)
                       )
                     }}
                     onRemove={(agentId) => {
+                      // Clean up polling for this agent
+                      const cleanup = activePollingCleanups[agentId]
+                      if (cleanup) {
+                        cleanup()
+                        setActivePollingCleanups(prev => {
+                          const newCleanups = { ...prev }
+                          delete newCleanups[agentId]
+                          return newCleanups
+                        })
+                      }
+                      
+                      // Remove agent from state
                       setProgressiveAgents(prev => 
                         prev.filter(a => a.id !== agentId)
                       )

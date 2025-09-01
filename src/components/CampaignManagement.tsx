@@ -174,7 +174,7 @@ export default function CampaignManagement() {
                 Email Campaigns
               </CardTitle>
               <CardDescription className="mt-2 text-gray-600 dark:text-slate-300">
-                Manage your AI-powered email outreach campaigns with SmartLead.ai integration • {campaigns.length} total campaigns
+                Manage your AI-powered email outreach campaigns with Instantly.ai integration • {campaigns.length} total campaigns
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -343,8 +343,8 @@ export default function CampaignManagement() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                // Open in SmartLead.ai dashboard
-                                window.open('https://app.smartlead.ai/app/dashboard', '_blank')
+                                // Open in Instantly.ai dashboard
+                                window.open('https://app.instantly.ai/app/dashboard', '_blank')
                               }}
                               className="hover:bg-gray-100 dark:hover:bg-slate-600"
                             >
@@ -518,7 +518,7 @@ export default function CampaignManagement() {
                       Platform
                     </Label>
                     <p className="text-gray-900 dark:text-slate-100 mt-1">
-                      {selectedCampaign.platform || 'SmartLead.ai'}
+                      {selectedCampaign.platform || 'Instantly.ai'}
                       {selectedCampaign.ai_personalized && (
                         <span className="ml-2 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full">
                           AI Enhanced
@@ -632,24 +632,24 @@ export default function CampaignManagement() {
                 </div>
               </div>
 
-              {/* SmartLead.ai Features */}
+              {/* Instantly.ai Features */}
               <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <Info className="w-5 h-5 text-purple-500 mt-0.5" />
                   <div>
                     <h4 className="text-sm font-semibold text-purple-900 dark:text-purple-100 mb-1">
-                      SmartLead.ai Enhanced Features
+                      Instantly.ai Enhanced Features
                     </h4>
                     <p className="text-sm text-purple-800 dark:text-purple-200 mb-2">
-                      Your campaigns now leverage SmartLead.ai's AI-powered features:
+                      Your campaigns now leverage Instantly.ai's proven email outreach features:
                     </p>
                     <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1">
-                      <li>• AI-powered email personalization and optimization</li>
-                      <li>• Advanced deliverability and spam prevention</li>
-                      <li>• Smart send time optimization</li>
-                      <li>• Real-time engagement tracking and analytics</li>
+                      <li>• High-deliverability email infrastructure</li>
+                      <li>• Advanced email validation and verification</li>
                       <li>• Automated follow-up sequences</li>
-                      <li>• Integrated CRM and lead management</li>
+                      <li>• Real-time campaign analytics and tracking</li>
+                      <li>• Built-in email warmup and reputation management</li>
+                      <li>• Integrated lead management and CRM</li>
                     </ul>
                   </div>
                 </div>
@@ -685,13 +685,13 @@ export default function CampaignManagement() {
             </Button>
             <Button 
               onClick={() => {
-                // Open in SmartLead.ai dashboard
-                window.open('https://app.smartlead.ai/app/dashboard', '_blank')
+                // Open in Instantly.ai dashboard
+                window.open('https://app.instantly.ai/app/dashboard', '_blank')
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               <ExternalLink className="w-4 h-4 mr-2" />
-              Open in SmartLead
+              Open in Instantly
             </Button>
           </DialogFooter>
         </DialogContent>

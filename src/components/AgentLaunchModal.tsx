@@ -54,7 +54,10 @@ export default function AgentLaunchModal({
   const [formData, setFormData] = useState({
     query: '',
     hoursOld: '24',
-    customTags: ''
+    customTags: '',
+    targetType: 'hiring_managers',
+    companySize: 'all',
+    locationFilter: ''
   })
   
   const [isCreating, setIsCreating] = useState(false)
@@ -227,7 +230,10 @@ export default function AgentLaunchModal({
       const response = await apiClient.createProgressiveAgent(
         formData.query.trim(),
         parseInt(formData.hoursOld),
-        formData.customTags.trim() || undefined
+        formData.customTags.trim() || undefined,
+        formData.targetType,
+        formData.companySize,
+        formData.locationFilter.trim() || undefined
       )
       
       setCurrentAgent(response.agent)
@@ -323,6 +329,40 @@ export default function AgentLaunchModal({
                 Describe the type of job or role you're looking for
               </p>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <label htmlFor="targetType" className="text-sm font-semibold">
+                  Target Type
+                </label>
+                <select
+                  id="targetType"
+                  value={formData.targetType}
+                  onChange={(e) => setFormData(prev => ({ ...prev, targetType: e.target.value }))}
+                  className="w-full h-11 px-3 py-2 border border-input bg-background rounded-lg text-sm focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-400/20 focus:shadow-[0_0_0_1px_rgb(168_85_247_/_0.4)] dark:focus:shadow-[0_0_0_1px_rgb(196_181_253_/_0.4)] transition-all duration-200 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100"
+                >
+                  <option value="hiring_managers">🏢 Hiring Managers</option>
+                  <option value="job_candidates">👤 Job Candidates</option>
+                </select>
+              </div>
+              
+              <div className="space-y-3">
+                <label htmlFor="companySize" className="text-sm font-semibold">
+                  Company Size Target
+                </label>
+                <select
+                  id="companySize"
+                  value={formData.companySize}
+                  onChange={(e) => setFormData(prev => ({ ...prev, companySize: e.target.value }))}
+                  className="w-full h-11 px-3 py-2 border border-input bg-background rounded-lg text-sm focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-400/20 focus:shadow-[0_0_0_1px_rgb(168_85_247_/_0.4)] dark:focus:shadow-[0_0_0_1px_rgb(196_181_253_/_0.4)] transition-all duration-200 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100"
+                >
+                  <option value="small">🏢 Small (1-99)</option>
+                  <option value="medium">🏭 Medium (100-999)</option>
+                  <option value="large">🏭 Large (1000+)</option>
+                  <option value="all">🌐 All Sizes</option>
+                </select>
+              </div>
+            </div>
             
             <div className="space-y-3">
               <label htmlFor="hoursOld" className="text-sm font-semibold">
@@ -339,6 +379,22 @@ export default function AgentLaunchModal({
                 <option value="168">Last week</option>
                 <option value="720">Last month</option>
               </select>
+            </div>
+
+            <div className="space-y-3">
+              <label htmlFor="locationFilter" className="text-sm font-semibold">
+                Location Filter
+              </label>
+              <Input
+                id="locationFilter"
+                placeholder="e.g., New York, remote, San Francisco"
+                value={formData.locationFilter}
+                onChange={(e) => setFormData(prev => ({ ...prev, locationFilter: e.target.value }))}
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional: Filter by specific location or "remote"
+              </p>
             </div>
             
             <div className="space-y-3">

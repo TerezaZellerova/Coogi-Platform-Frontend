@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { apiClient, type Agent, type DashboardStats, type Campaign } from '@/lib/api-production'
+import { apiClient, type Agent, type DashboardStats, type Campaign, type ProgressiveAgent } from '@/lib/api-production'
 import { useAgentMonitoring } from '@/hooks/useAgentMonitoring'
 import { useToast } from '@/components/ui/toast'
+import { useAuth } from '@/contexts/AuthContext'
+import LoginForm from '@/components/LoginForm'
 import AgentLaunchModal from '@/components/AgentLaunchModal'
 import LeadManagement from '@/components/LeadManagement'
 import CampaignManagement from '@/components/CampaignManagement'
@@ -43,15 +45,15 @@ function DashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { addToast } = useToast()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [backendConnected, setBackendConnected] = useState(false)
   const [activeTab, setActiveTab] = useState('agents')
   
   // User profile state
   const [userProfile, setUserProfile] = useState({
-    name: 'User',
-    email: 'user@coogi.dev',
+    name: user?.name || 'User',
+    email: user?.email || 'user@coogi.dev',
     avatar: ''
   })
   
@@ -88,12 +90,35 @@ function DashboardContent() {
     }
   })
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [showCompletedAgents, setShowCompletedAgents] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // Filter agents based on current state
+  const filteredAgents = agents.filter(agent => {
+    // Always show running/processing agents
+    if (agent.status === 'running' || agent.status === 'processing' || agent.status === 'initializing') {
+      return true
+    }
+    
+    // Show completed/failed agents only if user wants to see them
+    if (agent.status === 'completed' || agent.status === 'failed') {
+      return showCompletedAgents
+    }
+    
+    return true
+  })
 
   useEffect(() => {
-    checkAuthentication()
-    loadUserProfile()
-  }, [])
+    if (!authLoading) {
+      if (isAuthenticated) {
+        loadDashboardData()
+        loadUserProfile()
+      } else {
+        // If not authenticated, still set loading to false so we can show login form
+        setLoading(false)
+      }
+    }
+  }, [isAuthenticated, authLoading])
 
   // Auto-refresh dashboard data every 30 seconds
   useEffect(() => {
@@ -120,26 +145,8 @@ function DashboardContent() {
     }
   }, [searchParams])
 
-  const checkAuthentication = async () => {
-    try {
-      if (!apiClient.isAuthenticated()) {
-        router.push('/login')
-        return
-      }
-      
-      setIsAuthenticated(true)
-      await loadDashboardData()
-    } catch (error) {
-      console.error('Auth check error:', error)
-      router.push('/login')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleLogout = async () => {
-    await apiClient.logout()
-    router.push('/login')
+    logout()
   }
 
   const checkBackendConnection = async () => {
@@ -168,25 +175,79 @@ function DashboardContent() {
         console.error('❌ Failed to load dashboard stats:', statsError)
       }
       
-      // Load agents (this might fail due to auth issues, but don't let it break stats)
+      // Load progressive agents (modern agent system)
       try {
-        const agentsData = await apiClient.getAgents()
+        // Get raw progressive agent data with correct typing
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001'}/api/agents/progressive`)
+        const progressiveAgentsData: ProgressiveAgent[] = await response.json()
         
-        // Add agents to monitoring
-        agentsData.forEach(agent => {
-          if (agent.status === 'running' || agent.status === 'processing') {
-            addAgent(agent)
+        // Add progressive agents to monitoring (map to compatible agent format)
+        progressiveAgentsData.forEach(progressiveAgent => {
+          // Map progressive agent statuses to dashboard agent statuses
+          let dashboardStatus: Agent['status'] = 'failed'
+          switch (progressiveAgent.status) {
+            case 'initializing':
+              dashboardStatus = 'initializing'
+              break
+            case 'linkedin_stage':
+              dashboardStatus = 'running'
+              break
+            case 'enrichment_stage':
+              dashboardStatus = 'processing'
+              break
+            case 'completed':
+              dashboardStatus = 'completed'
+              break
+            case 'failed':
+              dashboardStatus = 'failed'
+              break
+          }
+          
+          // Show active and completed agents in dashboard
+          if (dashboardStatus === 'running' || dashboardStatus === 'processing' || 
+              dashboardStatus === 'initializing' || dashboardStatus === 'completed') {
+            // Convert ProgressiveAgent to Agent format for dashboard compatibility
+            const dashboardAgent: Agent = {
+              id: progressiveAgent.id,
+              query: progressiveAgent.query,
+              status: dashboardStatus,
+              created_at: progressiveAgent.created_at,
+              updated_at: progressiveAgent.updated_at,
+              total_jobs_found: progressiveAgent.staged_results?.total_jobs || 0,
+              total_emails_found: progressiveAgent.staged_results?.total_contacts || 0,
+              hours_old: progressiveAgent.hours_old,
+              custom_tags: progressiveAgent.custom_tags,
+              batch_id: progressiveAgent.id,
+              staged_results: progressiveAgent.staged_results
+            }
+            addAgent(dashboardAgent)
           }
         })
-        console.log('✅ Agents loaded:', agentsData.length)
+        console.log('✅ Progressive agents loaded:', progressiveAgentsData.length)
+        
+        // Also try to load legacy agents for compatibility
+        try {
+          const legacyAgentsData = await apiClient.getAgents()
+          legacyAgentsData.forEach(agent => {
+            if (agent.status === 'running' || agent.status === 'processing') {
+              addAgent(agent)
+            }
+          })
+          console.log('✅ Legacy agents loaded:', legacyAgentsData.length)
+        } catch (legacyError) {
+          console.warn('⚠️ Legacy agents endpoint failed (expected):', legacyError)
+        }
       } catch (agentsError) {
-        console.warn('⚠️ Failed to load agents (possibly auth issue):', agentsError)
+        console.warn('⚠️ Failed to load progressive agents:', agentsError)
         // Don't set backendConnected to false just because agents failed
       }
       
     } catch (error) {
       console.error('❌ Critical error loading dashboard data:', error)
       setBackendConnected(false)
+    } finally {
+      // Always set loading to false after attempting to load data
+      setLoading(false)
     }
   }
 
@@ -196,14 +257,33 @@ function DashboardContent() {
 
     setActionLoading('create')
     try {
-      const response = await apiClient.createAgent(
+      // Use progressive agent creation instead of the old endpoint
+      const response = await apiClient.createProgressiveAgent(
         query.trim(), 
         parseInt(hoursOld), 
-        customTags.trim() || undefined
+        customTags.trim() || undefined,
+        'hiring_managers', // default target type
+        'all', // default company size - will be configurable in UI
+        undefined // no location filter for basic form
       )
       
-      // Add to monitoring system - use the agent from the response
-      addAgent(response.agent)
+      // Add to monitoring system - convert ProgressiveAgent to Agent format
+      const agentForMonitoring: Agent = {
+        id: response.agent.id,
+        query: response.agent.query,
+        status: response.agent.status === 'linkedin_stage' ? 'running' : 
+                response.agent.status === 'enrichment_stage' ? 'processing' : 
+                response.agent.status,
+        created_at: response.agent.created_at,
+        updated_at: response.agent.updated_at,
+        total_jobs_found: response.agent.staged_results?.total_jobs || 0,
+        total_emails_found: response.agent.staged_results?.total_contacts || 0,
+        hours_old: response.agent.hours_old,
+        custom_tags: response.agent.custom_tags,
+        batch_id: response.agent.id
+      }
+      
+      addAgent(agentForMonitoring)
       
       setQuery('')
       setCustomTags('')
@@ -211,7 +291,7 @@ function DashboardContent() {
       addToast({
         type: 'success',
         title: 'Agent Created',
-        message: `Started agent: ${response.agent.query}`,
+        message: `Started progressive agent: ${response.agent.query}`,
         duration: 4000
       })
       
@@ -391,6 +471,22 @@ function DashboardContent() {
 
   if (!isAuthenticated) {
     return null
+  }
+
+  // Show login form if not authenticated
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <LoginForm onLoginSuccessAction={() => window.location.reload()} />
   }
 
   return (
@@ -777,17 +873,45 @@ function DashboardContent() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {agents.length === 0 ? (
+                    {/* Show/Hide Completed Agents Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Activity className="w-4 h-4 text-purple-500" />
+                        <span className="text-sm font-medium">Active Agents</span>
+                        <Badge variant="secondary">{filteredAgents.length}</Badge>
+                      </div>
+                      {agents.some(agent => agent.status === 'completed' || agent.status === 'failed') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCompletedAgents(!showCompletedAgents)}
+                          className="text-xs"
+                        >
+                          {showCompletedAgents ? 'Hide' : 'Show'} Completed
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {filteredAgents.length === 0 ? (
                       <div className="text-center py-12">
                         <div className="w-16 h-16 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Users className="w-8 h-8 text-slate-500 dark:text-slate-400" />
                         </div>
-                        <h3 className="text-lg font-semibold text-contrast-medium mb-2">No Active Agents</h3>
-                        <p className="text-muted-enhanced">Create your first agent to start generating leads</p>
+                        <h3 className="text-lg font-semibold text-contrast-medium mb-2">
+                          {agents.length === 0 ? 'No Active Agents' : 'No Active Agents'}
+                        </h3>
+                        <p className="text-muted-enhanced">
+                          {agents.length === 0 
+                            ? 'Create your first agent to start generating leads'
+                            : showCompletedAgents 
+                              ? 'All agents have completed'
+                              : 'All agents have completed. Show completed agents to view results.'
+                          }
+                        </p>
                       </div>
                     ) : (
                       <div className="grid gap-4">
-                        {agents.map((agent) => (
+                        {filteredAgents.map((agent) => (
                           <div
                             key={agent.id}
                             className="group relative flex items-center justify-between p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 hover:shadow-lg transition-all duration-200"
