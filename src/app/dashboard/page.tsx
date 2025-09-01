@@ -17,6 +17,7 @@ import AgentLaunchModal from '@/components/AgentLaunchModal'
 import LeadManagement from '@/components/LeadManagement'
 import CampaignManagement from '@/components/CampaignManagement'
 import SubscriptionDashboard from '@/components/SubscriptionDashboard'
+import SESEmailManagement from '@/components/SESEmailManagement'
 import { 
   Users, 
   TrendingUp, 
@@ -795,7 +796,7 @@ function DashboardContent() {
         <section aria-labelledby="main-content-section">
           <h3 id="main-content-section" className="sr-only">Main Dashboard Content</h3>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <TabsList className="grid w-full grid-cols-5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl" role="tablist" aria-label="Dashboard sections">
+            <TabsList className="grid w-full grid-cols-6 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl" role="tablist" aria-label="Dashboard sections">
               <TabsTrigger value="agents" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 Agent Management
               </TabsTrigger>
@@ -804,6 +805,10 @@ function DashboardContent() {
               </TabsTrigger>
               <TabsTrigger value="leads" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 Lead Database
+              </TabsTrigger>
+              <TabsTrigger value="ses" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
+                <Mail className="w-4 h-4 mr-2 sm:inline hidden" />
+                Amazon SES
               </TabsTrigger>
               <TabsTrigger value="subscription" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 <Crown className="w-4 h-4 mr-2 sm:inline hidden" />
@@ -1010,6 +1015,11 @@ function DashboardContent() {
           {/* Leads Tab */}
           <TabsContent value="leads" className="space-y-6">
             <LeadManagement />
+          </TabsContent>
+
+          {/* SES Tab */}
+          <TabsContent value="ses" className="space-y-6">
+            <SESEmailManagement />
           </TabsContent>
 
           {/* Subscription Tab */}

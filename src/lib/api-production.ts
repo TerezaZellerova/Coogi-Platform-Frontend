@@ -53,6 +53,71 @@ export interface DashboardStats {
   successRate: number
 }
 
+// SES interfaces
+export interface SESEmailRequest {
+  to_emails: string[]
+  subject: string
+  body_html: string
+  body_text: string
+  from_email: string
+  reply_to?: string
+}
+
+export interface SESBulkEmailRequest {
+  emails_data: Array<{
+    email: string
+    template_data: Record<string, any>
+  }>
+  template_name: string
+  from_email: string
+  reply_to?: string
+}
+
+export interface SESTemplateRequest {
+  template_name: string
+  subject: string
+  html_part: string
+  text_part: string
+}
+
+export interface SESCampaignRequest {
+  query: string
+  campaign_name: string
+  max_leads: number
+  min_score?: number
+  from_email: string
+  subject: string
+  email_template: string
+  send_immediately?: boolean
+}
+
+export interface SESStats {
+  send_quota: number
+  sent_last_24_hours: number
+  max_send_rate: number
+  bounce_rate: number
+  complaint_rate: number
+  reputation: {
+    delivery_delay: boolean
+    reputation_score: number
+  }
+}
+
+export interface SESCampaignResponse {
+  campaign_id: string
+  leads_found: number
+  emails_sent: number
+  campaign_status: string
+  message: string
+  leads: Array<{
+    name: string
+    email: string
+    company: string
+    position: string
+    score: number
+  }>
+}
+
 export interface Campaign {
   id: string
   name: string
@@ -1423,6 +1488,64 @@ class ApiClient {
     } catch (error) {
       console.error('Error resetting Hunter.io quota:', error)
       return { success: false }
+    }
+  }
+
+  // SES API methods
+  async sendSESEmail(request: SESEmailRequest): Promise<{ message: string; message_id: string }> {
+    try {
+      return await this.request('/api/ses/send-email', {
+        method: 'POST',
+        body: JSON.stringify(request)
+      })
+    } catch (error) {
+      console.error('Error sending SES email:', error)
+      throw error
+    }
+  }
+
+  async sendSESBulkEmail(request: SESBulkEmailRequest): Promise<{ message: string; sent_count: number; failed_count: number }> {
+    try {
+      return await this.request('/api/ses/send-bulk-email', {
+        method: 'POST',
+        body: JSON.stringify(request)
+      })
+    } catch (error) {
+      console.error('Error sending SES bulk email:', error)
+      throw error
+    }
+  }
+
+  async createSESTemplate(request: SESTemplateRequest): Promise<{ message: string; template_name: string }> {
+    try {
+      return await this.request('/api/ses/create-template', {
+        method: 'POST',
+        body: JSON.stringify(request)
+      })
+    } catch (error) {
+      console.error('Error creating SES template:', error)
+      throw error
+    }
+  }
+
+  async getSESStats(): Promise<SESStats> {
+    try {
+      return await this.request('/api/ses/stats')
+    } catch (error) {
+      console.error('Error fetching SES stats:', error)
+      throw error
+    }
+  }
+
+  async createSESCampaign(request: SESCampaignRequest): Promise<SESCampaignResponse> {
+    try {
+      return await this.request('/api/ses/create-campaign', {
+        method: 'POST',
+        body: JSON.stringify(request)
+      })
+    } catch (error) {
+      console.error('Error creating SES campaign:', error)
+      throw error
     }
   }
 }

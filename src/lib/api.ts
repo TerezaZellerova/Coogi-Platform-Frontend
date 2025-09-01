@@ -30,6 +30,71 @@ interface Campaign {
   reply_rate: number
 }
 
+// SES interfaces
+interface SESEmailRequest {
+  to_emails: string[]
+  subject: string
+  body_html: string
+  body_text: string
+  from_email: string
+  reply_to?: string
+}
+
+interface SESBulkEmailRequest {
+  emails_data: Array<{
+    email: string
+    template_data: Record<string, any>
+  }>
+  template_name: string
+  from_email: string
+  reply_to?: string
+}
+
+interface SESTemplateRequest {
+  template_name: string
+  subject: string
+  html_part: string
+  text_part: string
+}
+
+interface SESCampaignRequest {
+  query: string
+  campaign_name: string
+  max_leads: number
+  min_score?: number
+  from_email: string
+  subject: string
+  email_template: string
+  send_immediately?: boolean
+}
+
+interface SESStats {
+  send_quota: number
+  sent_last_24_hours: number
+  max_send_rate: number
+  bounce_rate: number
+  complaint_rate: number
+  reputation: {
+    delivery_delay: boolean
+    reputation_score: number
+  }
+}
+
+interface SESCampaignResponse {
+  campaign_id: string
+  leads_found: number
+  emails_sent: number
+  campaign_status: string
+  message: string
+  leads: Array<{
+    name: string
+    email: string
+    company: string
+    position: string
+    score: number
+  }>
+}
+
 class ApiClient {
   private baseUrl: string
   private supabaseUrl: string
@@ -203,26 +268,16 @@ class ApiClient {
   // Campaign Management
   async getCampaigns(): Promise<Campaign[]> {
     try {
-      // This would integrate with Instantly.ai API
-      // For now, return mock data
-      return [
-        {
-          id: '1',
-          name: 'Tech Outreach Q1',
-          status: 'active',
-          leads_count: 150,
-          open_rate: 24.5,
-          reply_rate: 8.3
-        },
-        {
-          id: '2',
-          name: 'Marketing Professionals',
-          status: 'active',
-          leads_count: 89,
-          open_rate: 31.2,
-          reply_rate: 12.1
-        }
-      ]
+      const headers = await this.getAuthHeaders()
+      const response = await fetch(`${this.baseUrl}/api/campaigns`, {
+        headers
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch campaigns: ${response.statusText}`)
+      }
+      
+      return await response.json()
     } catch (error) {
       console.error('Error fetching campaigns:', error)
       return []
@@ -243,6 +298,105 @@ class ApiClient {
       return response
     } catch (error) {
       console.error('Error starting agent:', error)
+      throw error
+    }
+  }
+
+  // SES API methods
+  async sendSESEmail(request: SESEmailRequest): Promise<{ message: string; message_id: string }> {
+    try {
+      const headers = await this.getAuthHeaders()
+      const response = await fetch(`${this.baseUrl}/api/ses/send-email`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(request)
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send email: ${response.statusText}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error sending SES email:', error)
+      throw error
+    }
+  }
+
+  async sendSESBulkEmail(request: SESBulkEmailRequest): Promise<{ message: string; sent_count: number; failed_count: number }> {
+    try {
+      const headers = await this.getAuthHeaders()
+      const response = await fetch(`${this.baseUrl}/api/ses/send-bulk-email`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(request)
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send bulk email: ${response.statusText}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error sending SES bulk email:', error)
+      throw error
+    }
+  }
+
+  async createSESTemplate(request: SESTemplateRequest): Promise<{ message: string; template_name: string }> {
+    try {
+      const headers = await this.getAuthHeaders()
+      const response = await fetch(`${this.baseUrl}/api/ses/create-template`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(request)
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create template: ${response.statusText}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error creating SES template:', error)
+      throw error
+    }
+  }
+
+  async getSESStats(): Promise<SESStats> {
+    try {
+      const headers = await this.getAuthHeaders()
+      const response = await fetch(`${this.baseUrl}/api/ses/stats`, {
+        headers
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch SES stats: ${response.statusText}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching SES stats:', error)
+      throw error
+    }
+  }
+
+  async createSESCampaign(request: SESCampaignRequest): Promise<SESCampaignResponse> {
+    try {
+      const headers = await this.getAuthHeaders()
+      const response = await fetch(`${this.baseUrl}/api/ses/create-campaign`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(request)
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create SES campaign: ${response.statusText}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error creating SES campaign:', error)
       throw error
     }
   }
@@ -318,4 +472,4 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient()
-export type { Agent, DashboardStats, Campaign }
+export type { Agent, DashboardStats, Campaign, SESEmailRequest, SESBulkEmailRequest, SESTemplateRequest, SESCampaignRequest, SESStats, SESCampaignResponse }
