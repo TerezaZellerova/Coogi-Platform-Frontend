@@ -633,71 +633,73 @@ export default function AgentsPage() {
                   )}
                 </div>
 
-                {/* Company Size Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold flex items-center gap-2">
-                    <Briefcase className="w-4 h-4" />
-                    Company Size Target <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <input
-                        type="radio"
-                        id="smallCompanies"
-                        name="companySize"
-                        value="small"
-                        checked={newAgent.companySize === 'small'}
-                        onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
-                      />
-                      <label htmlFor="smallCompanies" className="flex-1 cursor-pointer">
-                        <div className="font-medium text-sm">Small (1-99)</div>
-                        <div className="text-xs text-muted-foreground">Easy to reach decision makers</div>
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <input
-                        type="radio"
-                        id="mediumCompanies"
-                        name="companySize"
-                        value="medium"
-                        checked={newAgent.companySize === 'medium'}
-                        onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
-                      />
-                      <label htmlFor="mediumCompanies" className="flex-1 cursor-pointer">
-                        <div className="font-medium text-sm">Medium (100-999)</div>
-                        <div className="text-xs text-muted-foreground">Growing companies</div>
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <input
-                        type="radio"
-                        id="largeCompanies"
-                        name="companySize"
-                        value="large"
-                        checked={newAgent.companySize === 'large'}
-                        onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
-                      />
-                      <label htmlFor="largeCompanies" className="flex-1 cursor-pointer">
-                        <div className="font-medium text-sm">Large (1000+)</div>
-                        <div className="text-xs text-muted-foreground">Enterprise companies</div>
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <input
-                        type="radio"
-                        id="allCompanies"
-                        name="companySize"
-                        value="all"
-                        checked={newAgent.companySize === 'all'}
-                        onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
-                      />
-                      <label htmlFor="allCompanies" className="flex-1 cursor-pointer">
-                        <div className="font-medium text-sm">All Sizes</div>
-                        <div className="text-xs text-muted-foreground">No size restrictions</div>
-                      </label>
+                {/* Company Size Filter - Only show for hiring managers */}
+                {newAgent.targetType === 'hiring_managers' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" />
+                      Company Size Target
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                        <input
+                          type="radio"
+                          id="smallCompanies"
+                          name="companySize"
+                          value="small"
+                          checked={newAgent.companySize === 'small'}
+                          onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
+                        />
+                        <label htmlFor="smallCompanies" className="flex-1 cursor-pointer">
+                          <div className="font-medium text-sm">Small (1-99)</div>
+                          <div className="text-xs text-muted-foreground">Easy to reach decision makers</div>
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                        <input
+                          type="radio"
+                          id="mediumCompanies"
+                          name="companySize"
+                          value="medium"
+                          checked={newAgent.companySize === 'medium'}
+                          onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
+                        />
+                        <label htmlFor="mediumCompanies" className="flex-1 cursor-pointer">
+                          <div className="font-medium text-sm">Medium (100-999)</div>
+                          <div className="text-xs text-muted-foreground">Growing companies</div>
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                        <input
+                          type="radio"
+                          id="largeCompanies"
+                          name="companySize"
+                          value="large"
+                          checked={newAgent.companySize === 'large'}
+                          onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
+                        />
+                        <label htmlFor="largeCompanies" className="flex-1 cursor-pointer">
+                          <div className="font-medium text-sm">Large (1000+)</div>
+                          <div className="text-xs text-muted-foreground">Enterprise companies</div>
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                        <input
+                          type="radio"
+                          id="allCompanies"
+                          name="companySize"
+                          value="all"
+                          checked={newAgent.companySize === 'all'}
+                          onChange={(e) => setNewAgent(prev => ({ ...prev, companySize: e.target.value }))}
+                        />
+                        <label htmlFor="allCompanies" className="flex-1 cursor-pointer">
+                          <div className="font-medium text-sm">All Sizes</div>
+                          <div className="text-xs text-muted-foreground">No size restrictions</div>
+                        </label>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Advanced Filters */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
