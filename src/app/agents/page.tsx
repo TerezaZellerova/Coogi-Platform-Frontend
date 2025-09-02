@@ -169,7 +169,7 @@ export default function AgentsPage() {
         // Create progressive agent for instant LinkedIn results
         const response = await apiClient.createProgressiveAgent(
           enhancedQuery,
-          parseInt(newAgent.hoursOld),
+          newAgent.targetType === 'candidates' ? 720 : parseInt(newAgent.hoursOld), // Use 30 days for candidates, user's choice for hiring managers
           newAgent.customTags.trim() || undefined,
           newAgent.targetType,
           newAgent.companySize,
@@ -612,29 +612,32 @@ export default function AgentsPage() {
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Job Timeframe
-                    </label>
-                    <select
-                      value={newAgent.hoursOld}
-                      onChange={(e) => setNewAgent(prev => ({ ...prev, hoursOld: e.target.value }))}
-                      className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm"
-                    >
-                      <option value="1">Last 1 hour</option>
-                      <option value="24">Last 24 hours</option>
-                      <option value="168">Last week</option>
-                      <option value="720">Last month</option>
-                    </select>
-                  </div>
+                  {/* Only show job timeframe for hiring managers */}
+                  {newAgent.targetType === 'hiring_managers' && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Job Timeframe
+                      </label>
+                      <select
+                        value={newAgent.hoursOld}
+                        onChange={(e) => setNewAgent(prev => ({ ...prev, hoursOld: e.target.value }))}
+                        className="w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm"
+                      >
+                        <option value="1">Last 1 hour</option>
+                        <option value="24">Last 24 hours</option>
+                        <option value="168">Last week</option>
+                        <option value="720">Last month</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Company Size Filter */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center gap-2">
                     <Briefcase className="w-4 h-4" />
-                    Company Size Target
+                    Company Size Target <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="flex items-center space-x-2 p-3 border rounded-lg">
