@@ -41,3 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Demo and development files (exclude from production)
+demo-*.sh
+*_demo.tsx
+*_test.*
+*.demo.*

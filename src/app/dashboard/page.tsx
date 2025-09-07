@@ -18,6 +18,7 @@ import LeadManagement from '@/components/LeadManagement'
 import CampaignManagement from '@/components/CampaignManagement'
 import SubscriptionDashboard from '@/components/SubscriptionDashboard'
 import SESEmailManagement from '@/components/SESEmailManagement'
+import CoogiEmailIntelligence from '@/components/CoogiEmailIntelligence'
 import { 
   Users, 
   TrendingUp, 
@@ -62,6 +63,7 @@ function DashboardContent() {
     activeAgents: 0,
     totalRuns: 0,
     totalJobs: 0,
+    totalContacts: 0,
     successRate: 0
   })
   
@@ -79,16 +81,9 @@ function DashboardContent() {
     removeAgent,
     stopAllMonitoring
   } = useAgentMonitoring({
-    enabled: isAuthenticated,
-    onStatusChange: (agent, status) => {
-      addToast({
-        type: status.status === 'completed' ? 'success' : 
-              status.status === 'failed' ? 'error' : 'info',
-        title: `Agent ${agent.query}`,
-        message: `Status: ${status.status}`,
-        duration: 4000
-      })
-    }
+    enabled: isAuthenticated
+    // Removed onStatusChange to prevent duplicate notifications
+    // Notifications are already handled in useAgentMonitoring hook
   })
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showCompletedAgents, setShowCompletedAgents] = useState(false)
@@ -152,7 +147,7 @@ function DashboardContent() {
 
   const checkBackendConnection = async () => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001'
       const response = await fetch(`${apiBase}/`)
       const data = await response.json()
       setBackendConnected(data.status === 'healthy')
@@ -178,9 +173,8 @@ function DashboardContent() {
       
       // Load progressive agents (modern agent system)
       try {
-        // Get raw progressive agent data with correct typing
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001'}/api/agents/progressive`)
-        const progressiveAgentsData: ProgressiveAgent[] = await response.json()
+        // Get progressive agent data using the API client
+        const progressiveAgentsData = await apiClient.getAllProgressiveAgents() as any[]
         
         // Add progressive agents to monitoring (map to compatible agent format)
         progressiveAgentsData.forEach(progressiveAgent => {
@@ -773,6 +767,24 @@ function DashboardContent() {
             </CardContent>
           </Card>
           
+          <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900 card-premium animate-card-entrance" style={{animationDelay: '250ms'}}>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full -mr-12 -mt-12 animate-float" aria-hidden="true" style={{animationDelay: '2.5s'}}></div>
+            <div className="absolute top-2 right-2 w-2 h-2 bg-cyan-400 rounded-full animate-pulse-glow"></div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-cyan-700 dark:text-cyan-300">Contacts Found</CardTitle>
+              <div className="p-3 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl shadow-lg">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-cyan-900 dark:text-cyan-100 mb-1">{stats.totalContacts.toLocaleString()}</div>
+              <div className="text-xs text-cyan-600 dark:text-cyan-400 flex items-center">
+                <div className="w-2 h-2 bg-cyan-500 rounded-full mr-2 animate-pulse"></div>
+                Verified professionals
+              </div>
+            </CardContent>
+          </Card>
+          
           <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 card-premium animate-card-entrance" style={{animationDelay: '300ms'}}>
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full -mr-12 -mt-12 animate-float" aria-hidden="true" style={{animationDelay: '3s'}}></div>
             <div className="absolute top-2 right-2 w-2 h-2 bg-amber-400 rounded-full animate-pulse-glow"></div>
@@ -796,7 +808,7 @@ function DashboardContent() {
         <section aria-labelledby="main-content-section">
           <h3 id="main-content-section" className="sr-only">Main Dashboard Content</h3>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <TabsList className="grid w-full grid-cols-6 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl" role="tablist" aria-label="Dashboard sections">
+            <TabsList className="grid w-full grid-cols-7 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl" role="tablist" aria-label="Dashboard sections">
               <TabsTrigger value="agents" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 Agent Management
               </TabsTrigger>
@@ -805,6 +817,10 @@ function DashboardContent() {
               </TabsTrigger>
               <TabsTrigger value="leads" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 Lead Database
+              </TabsTrigger>
+              <TabsTrigger value="email-intelligence" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
+                <BarChart3 className="w-4 h-4 mr-2 sm:inline hidden" />
+                Email Intelligence
               </TabsTrigger>
               <TabsTrigger value="ses" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-contrast-medium data-[state=active]:text-contrast-high" role="tab">
                 <Mail className="w-4 h-4 mr-2 sm:inline hidden" />
@@ -1017,6 +1033,11 @@ function DashboardContent() {
             <LeadManagement />
           </TabsContent>
 
+          {/* Email Intelligence Tab */}
+          <TabsContent value="email-intelligence" className="space-y-6">
+            <CoogiEmailIntelligence />
+          </TabsContent>
+
           {/* SES Tab */}
           <TabsContent value="ses" className="space-y-6">
             <SESEmailManagement />
@@ -1044,12 +1065,12 @@ function DashboardContent() {
                       {backendConnected ? (
                         <>
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-sm text-green-600">Connected to {process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}</span>
+                          <span className="text-sm text-green-600">Connected to {process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001'}</span>
                         </>
                       ) : (
                         <>
                           <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                          <span className="text-sm text-red-600">Disconnected from {process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}</span>
+                          <span className="text-sm text-red-600">Disconnected from {process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001'}</span>
                         </>
                       )}
                     </div>

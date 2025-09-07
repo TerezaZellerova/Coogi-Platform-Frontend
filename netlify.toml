@@ -10,14 +10,14 @@
   NODE_VERSION = "20.19.3"
   NODE_ENV = "production"
 
-# API Rewrites for Backend (Render)
+# API Rewrites for Backend (Render) - Update this URL to match your Render deployment
 [[redirects]]
   from = "/api/*"
   to = "https://coogi-backend-7yca.onrender.com/api/:splat"
   status = 200
   force = true
 
-# Health check redirect
+# Direct backend health check
 [[redirects]]
   from = "/health"
   to = "https://coogi-backend-7yca.onrender.com/"

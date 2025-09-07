@@ -66,30 +66,38 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
     setConnectionStatus('connecting')
     
     // Try WebSocket first, fallback to polling
-    const ws = apiClient.connectProgressiveUpdates(
-      agent.id,
-      (updatedAgent) => {
-        onUpdate?.(updatedAgent)
-        setConnectionStatus('connected')
-        setErrorMessage(null)
-        setRetryCount(0)
-      },
-      (completedAgent) => {
-        onUpdate?.(completedAgent)
-        setIsPolling(false)
-        setConnectionStatus('connected')
-        if (ws) {
-          ws.close()
-          setWsConnection(null)
+    let ws: WebSocket | null = null
+    
+    try {
+      ws = apiClient.connectProgressiveUpdates(
+        agent.id,
+        (updatedAgent: ProgressiveAgent) => {
+          onUpdate?.(updatedAgent)
+          setConnectionStatus('connected')
+          setErrorMessage(null)
+          setRetryCount(0)
+        },
+        (completedAgent: ProgressiveAgent) => {
+          onUpdate?.(completedAgent)
+          setIsPolling(false)
+          setConnectionStatus('connected')
+          if (ws && typeof ws.close === 'function') {
+            ws.close()
+            setWsConnection(null)
+          }
+        },
+        (error: string) => {
+          setErrorMessage(error)
+          setConnectionStatus('error')
         }
-      },
-      (error) => {
-        setErrorMessage(error)
-        setConnectionStatus('error')
-      }
-    )
+      )
+    } catch (error) {
+      console.warn('Error setting up agent updates:', error)
+      setConnectionStatus('error')
+      setErrorMessage('Failed to connect to agent updates')
+    }
 
-    if (ws) {
+    if (ws && typeof ws.close === 'function') {
       setWsConnection(ws)
       setConnectionStatus('connected')
     } else {
@@ -98,8 +106,12 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
 
     // Cleanup on unmount
     return () => {
-      if (ws) {
-        ws.close()
+      if (ws && typeof ws.close === 'function') {
+        try {
+          ws.close()
+        } catch (error) {
+          console.warn('Error closing WebSocket:', error)
+        }
         setWsConnection(null)
       }
       setIsPolling(false)
@@ -247,12 +259,27 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
     }
   }
 
-  const stages = [
-    { key: 'linkedin_fetch', icon: <Briefcase className="h-4 w-4" />, label: 'LinkedIn Jobs', priority: 1 },
-    { key: 'other_boards', icon: <Target className="h-4 w-4" />, label: 'Other Job Boards', priority: 2 },
-    { key: 'contact_enrichment', icon: <Users className="h-4 w-4" />, label: 'Contact Discovery', priority: 3 },
-    { key: 'campaign_creation', icon: <Mail className="h-4 w-4" />, label: 'Campaign Creation', priority: 4 }
-  ]
+  // Dynamic stages based on agent target type
+  const getStagesForAgent = (targetType: string) => {
+    if (targetType === 'job_candidates') {
+      return [
+        { key: 'candidate_search', icon: <Users className="h-4 w-4" />, label: 'Professional Search', priority: 1 },
+        { key: 'contact_enrichment', icon: <Mail className="h-4 w-4" />, label: 'Contact Enrichment', priority: 2 },
+        { key: 'profile_analysis', icon: <Target className="h-4 w-4" />, label: 'Profile Analysis', priority: 3 },
+        { key: 'campaign_creation', icon: <Briefcase className="h-4 w-4" />, label: 'Campaign Creation', priority: 4 }
+      ]
+    } else {
+      // hiring_managers workflow (default)
+      return [
+        { key: 'linkedin_fetch', icon: <Briefcase className="h-4 w-4" />, label: 'LinkedIn Jobs', priority: 1 },
+        { key: 'other_boards', icon: <Target className="h-4 w-4" />, label: 'Other Job Boards', priority: 2 },
+        { key: 'contact_enrichment', icon: <Users className="h-4 w-4" />, label: 'Contact Discovery', priority: 3 },
+        { key: 'campaign_creation', icon: <Mail className="h-4 w-4" />, label: 'Campaign Creation', priority: 4 }
+      ]
+    }
+  }
+
+  const stages = getStagesForAgent(agent.target_type || 'hiring_managers')
 
   const getElapsedTime = () => {
     const now = new Date()
@@ -410,54 +437,134 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
 
         {/* Results Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-              {agent.staged_results.total_jobs}
-            </div>
-            <div className="text-xs text-blue-600 dark:text-blue-400">Total Jobs</div>
-          </div>
-          <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-            <div className="text-lg font-semibold text-green-600 dark:text-green-400">
-              {(() => {
-                // Count LinkedIn jobs from both linkedin_jobs array and other_jobs array, exclude demo data
-                const directLinkedInJobs = (agent.staged_results.linkedin_jobs || []).filter(job => !job.is_demo).length;
-                const linkedInJobsInOtherArray = (agent.staged_results.other_jobs || []).filter(job => 
-                  (!job.is_demo) && (job.site?.toLowerCase().includes('linkedin') || 
-                  job.url?.toLowerCase().includes('linkedin.com'))
-                ).length;
-                return directLinkedInJobs + linkedInJobsInOtherArray;
-              })()}
-            </div>
-            <div className="text-xs text-green-600 dark:text-green-400">LinkedIn Jobs</div>
-          </div>
-          <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
-            <div className="text-lg font-semibold text-purple-600 dark:text-purple-400">
-              {agent.staged_results.total_contacts}
-            </div>
-            <div className="text-xs text-purple-600 dark:text-purple-400">Contacts</div>
-          </div>
-          <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
-            <div className="text-lg font-semibold text-orange-600 dark:text-orange-400">
-              {agent.staged_results.total_campaigns}
-            </div>
-            <div className="text-xs text-orange-600 dark:text-orange-400">Campaigns</div>
-          </div>
+          {agent.target_type === 'job_candidates' ? (
+            // Job Candidates Results
+            <>
+              <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                  {agent.staged_results.total_contacts || (agent.staged_results.verified_contacts || []).length}
+                </div>
+                <div className="text-xs text-blue-600 dark:text-blue-400">Candidates</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                  {(agent.staged_results.verified_contacts || []).filter((contact: any) => contact.email).length}
+                </div>
+                <div className="text-xs text-green-600 dark:text-green-400">With Email</div>
+              </div>
+              <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
+                <div className="text-lg font-semibold text-purple-600 dark:text-purple-400">
+                  {(agent.staged_results.verified_contacts || []).filter((contact: any) => contact.verified).length}
+                </div>
+                <div className="text-xs text-purple-600 dark:text-purple-400">Verified</div>
+              </div>
+              <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
+                <div className="text-lg font-semibold text-orange-600 dark:text-orange-400">
+                  {agent.staged_results.total_campaigns}
+                </div>
+                <div className="text-xs text-orange-600 dark:text-orange-400">Campaigns</div>
+              </div>
+            </>
+          ) : (
+            // Hiring Managers Results
+            <>
+              <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                  {agent.staged_results.total_jobs}
+                </div>
+                <div className="text-xs text-blue-600 dark:text-blue-400">Total Jobs</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                  {(() => {
+                    // Count LinkedIn jobs from both linkedin_jobs array and other_jobs array, exclude demo data
+                    const directLinkedInJobs = (agent.staged_results.linkedin_jobs || []).filter(job => !job.is_demo).length;
+                    const linkedInJobsInOtherArray = (agent.staged_results.other_jobs || []).filter(job => 
+                      (!job.is_demo) && (job.site?.toLowerCase().includes('linkedin') || 
+                      job.url?.toLowerCase().includes('linkedin.com'))
+                    ).length;
+                    return directLinkedInJobs + linkedInJobsInOtherArray;
+                  })()}
+                </div>
+                <div className="text-xs text-green-600 dark:text-green-400">LinkedIn Jobs</div>
+              </div>
+              <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
+                <div className="text-lg font-semibold text-purple-600 dark:text-purple-400">
+                  {agent.staged_results.total_contacts}
+                </div>
+                <div className="text-xs text-purple-600 dark:text-purple-400">Contacts</div>
+              </div>
+              <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
+                <div className="text-lg font-semibold text-orange-600 dark:text-orange-400">
+                  {agent.staged_results.total_campaigns}
+                </div>
+                <div className="text-xs text-orange-600 dark:text-orange-400">Campaigns</div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* LinkedIn Jobs Preview */}
-        {(() => {
-          // Get LinkedIn jobs from both arrays and filter out demo data
-          const directLinkedInJobs = (agent.staged_results.linkedin_jobs || []).filter(job => !job.is_demo);
-          const linkedInJobsInOther = (agent.staged_results.other_jobs || []).filter(job => 
-            (!job.is_demo) && (job.site?.toLowerCase().includes('linkedin') || 
-            job.url?.toLowerCase().includes('linkedin.com'))
-          );
-          const allLinkedInJobs = [...directLinkedInJobs, ...linkedInJobsInOther];
-          
-          return allLinkedInJobs.length > 0 ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-gray-700">LinkedIn Jobs Preview</h4>
+        {/* Results Preview */}
+        {agent.target_type === 'job_candidates' ? (
+          // Candidates Preview
+          (() => {
+            const candidates = (agent.staged_results.verified_contacts || []).filter((contact: any) => !contact.is_demo);
+            
+            return candidates.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-gray-700">Candidates Preview</h4>
+                  <span className="text-xs text-gray-500">{candidates.length} found</span>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {candidates.slice(0, 3).map((candidate: any, index: number) => (
+                    <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h5 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {candidate.name || `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Candidate'}
+                          </h5>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            {candidate.title || 'Professional'} {candidate.company && `at ${candidate.company}`}
+                          </p>
+                          {candidate.email && (
+                            <p className="text-xs text-blue-600 dark:text-blue-400 truncate">{candidate.email}</p>
+                          )}
+                        </div>
+                        {candidate.verified && (
+                          <CheckCircle className="h-4 w-4 text-green-500 ml-2" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {candidates.length > 3 && (
+                  <div className="text-center">
+                    <ProgressiveAgentResults agent={agent} trigger={
+                      <Button variant="outline" size="sm" className="text-xs">
+                        View all {candidates.length} candidates →
+                      </Button>
+                    } />
+                  </div>
+                )}
+              </div>
+            ) : null;
+          })()
+        ) : (
+          // LinkedIn Jobs Preview (Original)
+          (() => {
+            // Get LinkedIn jobs from both arrays and filter out demo data
+            const directLinkedInJobs = (agent.staged_results.linkedin_jobs || []).filter(job => !job.is_demo);
+            const linkedInJobsInOther = (agent.staged_results.other_jobs || []).filter(job => 
+              (!job.is_demo) && (job.site?.toLowerCase().includes('linkedin') || 
+              job.url?.toLowerCase().includes('linkedin.com'))
+            );
+            const allLinkedInJobs = [...directLinkedInJobs, ...linkedInJobsInOther];
+            
+            return allLinkedInJobs.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-gray-700">LinkedIn Jobs Preview</h4>
                 <Badge variant="outline" className="text-xs">
                   {allLinkedInJobs.length} found
                 </Badge>
@@ -500,8 +607,9 @@ export function ProgressiveAgentCard({ agent, onUpdate, onRemove }: ProgressiveA
                 )}
               </div>
             </div>
-          ) : null;
-        })()}
+            ) : null;
+          })()
+        )}
 
         {/* Quick Actions */}
         <div className="flex gap-2 pt-2">

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { apiClient, type Campaign } from '@/lib/api-production'
+import { apiClient, type Campaign, type CreateCampaignRequest } from '@/lib/api-production'
 import { 
   Mail, 
   Users, 
@@ -36,6 +36,9 @@ export default function CampaignManagement() {
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
   const [newCampaignName, setNewCampaignName] = useState('')
+  const [newCampaignSubject, setNewCampaignSubject] = useState('')
+  const [newCampaignEmailBody, setNewCampaignEmailBody] = useState('')
+  const [newCampaignPlatform, setNewCampaignPlatform] = useState<'aws_ses' | 'instantly'>('aws_ses')
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -69,30 +72,100 @@ export default function CampaignManagement() {
   }
 
   const handleCreateCampaign = async () => {
-    if (!newCampaignName.trim()) return
+    // Validate required fields
+    const name = newCampaignName.trim()
+    const subject = newCampaignSubject.trim()
+    const body = newCampaignEmailBody.trim()
+    
+    if (!name || !subject || !body) {
+      alert('Please fill in all required fields: Campaign Name, Subject Line, and Email Body')
+      return
+    }
+
+    // Validate email body has some personalization
+    if (!body.includes('{{') && !body.includes('{first_name}') && !body.includes('{company}')) {
+      const confirmed = confirm(
+        'Your email body doesn\'t seem to include personalization variables like {{first_name}} or {{company}}. ' +
+        'This may result in generic emails. Do you want to continue anyway?'
+      )
+      if (!confirmed) return
+    }
 
     setActionLoading('create')
     try {
-      const newCampaign = await apiClient.createCampaign(newCampaignName.trim(), [])
+      const campaignRequest: CreateCampaignRequest = {
+        name: name,
+        platform: newCampaignPlatform,
+        subject_line: subject,
+        from_email: 'outreach@coogi.ai',
+        from_name: 'Coogi Team',
+        email_sequence: [{
+          step_number: 1,
+          subject: subject,
+          body: body,
+          delay_days: 0
+        }],
+        contacts: [] // Will be populated when contacts are added
+      }
+
+      const response = await apiClient.createProductionCampaign(campaignRequest)
+      
+      // Create a campaign object for the UI
+      const newCampaign: Campaign = {
+        id: response.campaign_id,
+        name: name,
+        status: 'draft',
+        platform: newCampaignPlatform,
+        subject_line: subject,
+        from_email: 'outreach@coogi.ai',
+        from_name: 'Coogi Team',
+        email_sequence: campaignRequest.email_sequence,
+        target_count: 0,
+        verified_contacts: [],
+        sent_count: 0,
+        open_count: 0,
+        reply_count: 0,
+        click_count: 0,
+        bounce_count: 0,
+        open_rate: 0,
+        reply_rate: 0,
+        click_rate: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        provider_campaign_id: response.provider_campaign_id
+      }
+
       setCampaigns(prev => [newCampaign, ...prev])
       setShowCreateModal(false)
-      setNewCampaignName('')
+      resetCreateForm()
+      
+      // Show success message
+      alert(`✅ Campaign "${name}" created successfully! You can now add contacts and launch it.`)
+      
     } catch (error) {
       console.error('Error creating campaign:', error)
-      alert('Failed to create campaign')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      alert(`❌ Failed to create campaign: ${errorMessage}. Please check all fields and try again.`)
     } finally {
       setActionLoading(null)
     }
   }
 
-  const openCreateModal = () => {
+  const resetCreateForm = () => {
     setNewCampaignName('')
+    setNewCampaignSubject('')
+    setNewCampaignEmailBody('')
+    setNewCampaignPlatform('instantly')
+  }
+
+  const openCreateModal = () => {
+    resetCreateForm()
     setShowCreateModal(true)
   }
 
   const closeCreateModal = () => {
     setShowCreateModal(false)
-    setNewCampaignName('')
+    resetCreateForm()
   }
 
   const clearSearch = () => {
@@ -113,12 +186,16 @@ export default function CampaignManagement() {
     const variants = {
       active: 'default',
       paused: 'secondary',
-      draft: 'outline'
+      draft: 'outline',
+      completed: 'secondary',
+      failed: 'destructive'
     }
     const colors = {
       active: 'text-green-600 dark:text-green-400',
       paused: 'text-yellow-600 dark:text-yellow-400',
-      draft: 'text-gray-600 dark:text-gray-400'
+      draft: 'text-gray-600 dark:text-gray-400',
+      completed: 'text-blue-600 dark:text-blue-400',
+      failed: 'text-red-600 dark:text-red-400'
     }
     return (
       <Badge variant={variants[status] as any} className={colors[status]}>
@@ -133,6 +210,119 @@ export default function CampaignManagement() {
       month: 'short',
       day: 'numeric'
     })
+  }
+
+  // Campaign Action Handlers
+  const handleStartCampaign = async (campaignId: string) => {
+    setActionLoading(`start-${campaignId}`)
+    try {
+      await apiClient.startCampaign(campaignId)
+      // Update campaign status in local state
+      setCampaigns(prev => prev.map(c => 
+        c.id === campaignId ? { ...c, status: 'active' as const } : c
+      ))
+    } catch (error) {
+      console.error('Error starting campaign:', error)
+      alert('Failed to start campaign')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handlePauseCampaign = async (campaignId: string) => {
+    setActionLoading(`pause-${campaignId}`)
+    try {
+      await apiClient.pauseCampaign(campaignId)
+      // Update campaign status in local state
+      setCampaigns(prev => prev.map(c => 
+        c.id === campaignId ? { ...c, status: 'paused' as const } : c
+      ))
+    } catch (error) {
+      console.error('Error pausing campaign:', error)
+      alert('Failed to pause campaign')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleResumeCampaign = async (campaignId: string) => {
+    setActionLoading(`resume-${campaignId}`)
+    try {
+      await apiClient.resumeCampaign(campaignId)
+      // Update campaign status in local state
+      setCampaigns(prev => prev.map(c => 
+        c.id === campaignId ? { ...c, status: 'active' as const } : c
+      ))
+    } catch (error) {
+      console.error('Error resuming campaign:', error)
+      alert('Failed to resume campaign')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleSyncStats = async (campaignId: string) => {
+    setActionLoading(`sync-${campaignId}`)
+    try {
+      await apiClient.syncCampaignStats(campaignId)
+      // Reload campaigns to get updated stats
+      await loadCampaigns()
+    } catch (error) {
+      console.error('Error syncing campaign stats:', error)
+      alert('Failed to sync campaign stats')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleSyncAllStats = async () => {
+    setActionLoading('sync-all')
+    try {
+      // Sync stats for all active campaigns
+      const activeCampaigns = campaigns.filter(c => c.status === 'active' || c.status === 'paused')
+      
+      if (activeCampaigns.length === 0) {
+        alert('📊 No active campaigns to sync stats for. Create and launch campaigns to see live statistics.')
+        return
+      }
+
+      // Show progress feedback
+      let successCount = 0
+      let errorCount = 0
+
+      // Sync all campaigns in parallel
+      const syncPromises = activeCampaigns.map(async (campaign) => {
+        try {
+          await apiClient.syncCampaignStats(campaign.id)
+          successCount++
+          return { success: true, campaign: campaign.name }
+        } catch (error) {
+          console.error(`Failed to sync campaign ${campaign.id}:`, error)
+          errorCount++
+          return { success: false, campaign: campaign.name, error }
+        }
+      })
+      
+      await Promise.allSettled(syncPromises)
+      
+      // Reload campaigns to get updated stats
+      await loadCampaigns()
+      
+      // Show detailed feedback
+      if (errorCount === 0) {
+        alert(`✅ Successfully synced stats for all ${successCount} campaigns!`)
+      } else if (successCount > 0) {
+        alert(`⚠️ Synced ${successCount} campaigns successfully, but ${errorCount} failed. Check console for details.`)
+      } else {
+        alert(`❌ Failed to sync stats for all campaigns. Please check your internet connection and try again.`)
+      }
+      
+    } catch (error) {
+      console.error('Error syncing all campaign stats:', error)
+      alert('❌ Failed to sync campaign stats. Please try again.')
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   if (loading) {
@@ -187,6 +377,16 @@ export default function CampaignManagement() {
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncAllStats}
+                disabled={actionLoading === 'sync-all' || campaigns.length === 0}
+                className="shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
+              >
+                <TrendingUp className={`w-4 h-4 mr-2 ${actionLoading === 'sync-all' ? 'animate-pulse' : ''}`} />
+                {actionLoading === 'sync-all' ? 'Syncing...' : 'Sync All Stats'}
               </Button>
               <Button
                 size="sm"
@@ -259,7 +459,7 @@ export default function CampaignManagement() {
                   <div>
                     <p className="text-sm text-purple-600 dark:text-purple-300 font-medium">Total Leads</p>
                     <p className="text-2xl font-bold text-purple-700 dark:text-purple-200">
-                      {campaigns.reduce((sum, c) => sum + c.leads_count, 0)}
+                      {campaigns.reduce((sum, c) => sum + c.target_count, 0)}
                     </p>
                   </div>
                 </div>
@@ -305,9 +505,23 @@ export default function CampaignManagement() {
                             </div>
                             <div>
                               <div className="font-medium text-gray-900 dark:text-slate-100">{campaign.name}</div>
-                              {campaign.batch_id && (
-                                <div className="text-xs text-gray-600 dark:text-slate-400">ID: {campaign.batch_id}</div>
-                              )}
+                              <div className="flex items-center gap-2 mt-1">
+                                {campaign.batch_id && (
+                                  <span className="text-xs text-gray-600 dark:text-slate-400">ID: {campaign.batch_id}</span>
+                                )}
+                                {/* Platform Badge */}
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${
+                                    campaign.platform === 'instantly' 
+                                      ? 'border-purple-200 text-purple-700 bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:bg-purple-900/20'
+                                      : 'border-gray-200 text-gray-700 bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:bg-gray-900/20'
+                                  }`}
+                                >
+                                  {campaign.platform === 'instantly' ? '⚡ Instantly' : 
+                                   '🏠 Internal'}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
                         </TableCell>
@@ -317,7 +531,7 @@ export default function CampaignManagement() {
                         <TableCell className="text-gray-900 dark:text-slate-100">
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4 text-gray-500 dark:text-slate-400" />
-                            {campaign.leads_count}
+                            {campaign.target_count}
                           </div>
                         </TableCell>
                         <TableCell className="text-gray-900 dark:text-slate-100">
@@ -331,22 +545,96 @@ export default function CampaignManagement() {
                         </TableCell>
                         <TableCell className="text-gray-900 dark:text-slate-100">
                           <div className="flex items-center gap-1">
+                            {/* Start/Pause Campaign */}
+                            {campaign.status === 'draft' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStartCampaign(campaign.id)}
+                                disabled={actionLoading === `start-${campaign.id}`}
+                                className="hover:bg-green-100 dark:hover:bg-green-900 text-green-600 dark:text-green-400"
+                                title="Start Campaign"
+                              >
+                                {actionLoading === `start-${campaign.id}` ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Play className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
+                            {campaign.status === 'active' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handlePauseCampaign(campaign.id)}
+                                disabled={actionLoading === `pause-${campaign.id}`}
+                                className="hover:bg-yellow-100 dark:hover:bg-yellow-900 text-yellow-600 dark:text-yellow-400"
+                                title="Pause Campaign"
+                              >
+                                {actionLoading === `pause-${campaign.id}` ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Pause className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
+                            {campaign.status === 'paused' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleResumeCampaign(campaign.id)}
+                                disabled={actionLoading === `resume-${campaign.id}`}
+                                className="hover:bg-green-100 dark:hover:bg-green-900 text-green-600 dark:text-green-400"
+                                title="Resume Campaign"
+                              >
+                                {actionLoading === `resume-${campaign.id}` ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Play className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
+                            
+                            {/* Sync Stats */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSyncStats(campaign.id)}
+                              disabled={actionLoading === `sync-${campaign.id}`}
+                              className="hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400"
+                              title="Sync Stats"
+                            >
+                              {actionLoading === `sync-${campaign.id}` ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4" />
+                              )}
+                            </Button>
+
+                            {/* View Details */}
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => openCampaignDetails(campaign)}
                               className="hover:bg-gray-100 dark:hover:bg-slate-600"
+                              title="View Details"
                             >
                               <BarChart3 className="w-4 h-4" />
                             </Button>
+
+                            {/* Open in Provider */}
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                // Open in Instantly.ai dashboard
-                                window.open('https://app.instantly.ai/app/dashboard', '_blank')
+                                const platformUrls = {
+                                  instantly: 'https://app.instantly.ai/app/dashboard',
+                                  internal: '#'
+                                }
+                                window.open(platformUrls[campaign.platform] || platformUrls.instantly, '_blank')
                               }}
                               className="hover:bg-gray-100 dark:hover:bg-slate-600"
+                              title={`Open in ${campaign.platform === 'instantly' ? 'Instantly.ai' : 'Platform'}`}
                             >
                               <ExternalLink className="w-4 h-4" />
                             </Button>
@@ -403,7 +691,7 @@ export default function CampaignManagement() {
 
       {/* Campaign Creation Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="sm:max-w-[425px] bg-background border-border">
+        <DialogContent className="sm:max-w-[600px] bg-background border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
               <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
@@ -412,32 +700,94 @@ export default function CampaignManagement() {
               Create New Campaign
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Create a new email campaign for your outreach efforts. Choose a descriptive name that helps you identify the campaign purpose.
+              Create a new email campaign that will be pushed to your chosen platform. All fields are required.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-6 py-4">
+            {/* Campaign Name */}
             <div className="grid gap-2">
-              <Label htmlFor="campaign-name" className="text-foreground">Campaign Name</Label>
+              <Label htmlFor="campaign-name" className="text-foreground font-medium">
+                Campaign Name *
+              </Label>
               <Input
                 id="campaign-name"
-                placeholder="e.g., Q1 2024 SaaS Prospects"
+                placeholder="e.g., Q1 2025 SaaS Outreach"
                 value={newCampaignName}
                 onChange={(e) => setNewCampaignName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newCampaignName.trim()) {
-                    handleCreateCampaign()
-                  }
-                }}
-                className="col-span-3 bg-background border-border text-foreground placeholder:text-muted-foreground"
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                 disabled={actionLoading === 'create'}
               />
-              {newCampaignName.trim() && (
-                <p className="text-xs text-muted-foreground">
-                  Campaign will be created with name: "{newCampaignName.trim()}"
-                </p>
-              )}
             </div>
+
+            {/* Platform Selection */}
+            <div className="grid gap-2">
+              <Label htmlFor="platform" className="text-foreground font-medium">
+                Platform *
+              </Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={() => setNewCampaignPlatform('instantly')}
+                  disabled={actionLoading === 'create'}
+                  className="flex-1"
+                >
+                  ⚡ Instantly.ai (Primary Platform)
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Using Instantly.ai for reliable email campaign management with excellent API support.
+              </p>
+            </div>
+
+            {/* Subject Line */}
+            <div className="grid gap-2">
+              <Label htmlFor="subject-line" className="text-foreground font-medium">
+                Subject Line *
+              </Label>
+              <Input
+                id="subject-line"
+                placeholder="e.g., Quick question about your tech stack"
+                value={newCampaignSubject}
+                onChange={(e) => setNewCampaignSubject(e.target.value)}
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+                disabled={actionLoading === 'create'}
+              />
+            </div>
+
+            {/* Email Body */}
+            <div className="grid gap-2">
+              <Label htmlFor="email-body" className="text-foreground font-medium">
+                Email Body *
+              </Label>
+              <textarea
+                id="email-body"
+                placeholder={`Hi {{first_name}},
+
+I hope this message finds you well. I noticed your work at {{company}} and wanted to reach out about...
+
+Best regards,
+Coogi Team`}
+                value={newCampaignEmailBody}
+                onChange={(e) => setNewCampaignEmailBody(e.target.value)}
+                rows={8}
+                className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={actionLoading === 'create'}
+              />
+              <p className="text-xs text-muted-foreground">
+                Use {"{{first_name}}"}, {"{{last_name}}"}, {"{{company}}"} for personalization
+              </p>
+            </div>
+
+            {/* Validation Message */}
+            {(newCampaignName.trim() && newCampaignSubject.trim() && newCampaignEmailBody.trim()) && (
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  ✅ Ready to create campaign "{newCampaignName.trim()}" on Instantly.ai
+                </p>
+              </div>
+            )}
           </div>
           
           <DialogFooter>
@@ -450,7 +800,7 @@ export default function CampaignManagement() {
             </Button>
             <Button 
               onClick={handleCreateCampaign}
-              disabled={!newCampaignName.trim() || actionLoading === 'create'}
+              disabled={!newCampaignName.trim() || !newCampaignSubject.trim() || !newCampaignEmailBody.trim() || actionLoading === 'create'}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
             >
               {actionLoading === 'create' ? (
@@ -502,7 +852,7 @@ export default function CampaignManagement() {
                       Subject Line
                     </Label>
                     <p className="text-gray-900 dark:text-slate-100 mt-1">
-                      {selectedCampaign.subject || 'No subject set'}
+                      {selectedCampaign.subject_line || 'No subject set'}
                     </p>
                   </div>
                   <div>
@@ -519,11 +869,6 @@ export default function CampaignManagement() {
                     </Label>
                     <p className="text-gray-900 dark:text-slate-100 mt-1">
                       {selectedCampaign.platform || 'Instantly.ai'}
-                      {selectedCampaign.ai_personalized && (
-                        <span className="ml-2 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full">
-                          AI Enhanced
-                        </span>
-                      )}
                     </p>
                   </div>
                 </div>
@@ -538,7 +883,7 @@ export default function CampaignManagement() {
                   <div className="text-center p-3 bg-white dark:bg-slate-600 rounded-lg">
                     <Users className="w-6 h-6 text-blue-500 mx-auto mb-2" />
                     <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                      {selectedCampaign.target_count || selectedCampaign.leads_count || 0}
+                      {selectedCampaign.target_count || 0}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-slate-400">Targets</p>
                   </div>
@@ -564,6 +909,45 @@ export default function CampaignManagement() {
                     <p className="text-sm text-gray-600 dark:text-slate-400">Replies</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Email Sequence */}
+              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-3">
+                  Email Sequence
+                </h3>
+                {selectedCampaign.email_sequence && selectedCampaign.email_sequence.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedCampaign.email_sequence.map((step, index) => (
+                      <div key={step.step_number} className="bg-white dark:bg-slate-600 rounded-lg p-3 border border-gray-200 dark:border-slate-500">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline" className="text-xs">
+                            Step {step.step_number}
+                          </Badge>
+                          {step.delay_days > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{step.delay_days} days
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div>
+                            <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">Subject:</Label>
+                            <p className="text-sm text-gray-900 dark:text-slate-100">{step.subject}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">Body:</Label>
+                            <p className="text-sm text-gray-900 dark:text-slate-100 whitespace-pre-wrap bg-gray-50 dark:bg-slate-700 p-2 rounded border text-xs">
+                              {step.body.substring(0, 150)}{step.body.length > 150 ? '...' : ''}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-600 dark:text-slate-400 text-sm">No email sequence configured</p>
+                )}
               </div>
 
               {/* Campaign Info */}
@@ -604,21 +988,9 @@ export default function CampaignManagement() {
                       Campaign Type
                     </Label>
                     <p className="text-gray-900 dark:text-slate-100 mt-1">
-                      {selectedCampaign.type === 'ai_personalized' ? 'AI Personalized' : 
-                       selectedCampaign.type === 'email_outreach' ? 'Email Outreach' : 
-                       selectedCampaign.type || 'Standard Campaign'}
+                      Standard Campaign
                     </p>
                   </div>
-                  {selectedCampaign.ai_personalized && (
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                        AI Personalization Level
-                      </Label>
-                      <p className="text-gray-900 dark:text-slate-100 mt-1 capitalize">
-                        {selectedCampaign.personalization_level || 'High'}
-                      </p>
-                    </div>
-                  )}
                   {selectedCampaign.from_email && (
                     <div>
                       <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
@@ -680,19 +1052,40 @@ export default function CampaignManagement() {
           )}
           
           <DialogFooter>
-            <Button variant="outline" onClick={closeCampaignDetails} className="bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 border-gray-300 dark:border-slate-600">
-              Close
-            </Button>
-            <Button 
-              onClick={() => {
-                // Open in Instantly.ai dashboard
-                window.open('https://app.instantly.ai/app/dashboard', '_blank')
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Open in Instantly
-            </Button>
+            <div className="flex items-center gap-2 w-full">
+              <Button
+                variant="outline"
+                onClick={() => selectedCampaign && handleSyncStats(selectedCampaign.id)}
+                disabled={!selectedCampaign || actionLoading === `sync-${selectedCampaign.id}`}
+                className="flex items-center gap-2"
+              >
+                {selectedCampaign && actionLoading === `sync-${selectedCampaign.id}` ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                Sync Now
+              </Button>
+              <div className="flex-1"></div>
+              <Button variant="outline" onClick={closeCampaignDetails} className="bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 border-gray-300 dark:border-slate-600">
+                Close
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (selectedCampaign) {
+                    const platformUrls = {
+                      instantly: 'https://app.instantly.ai/app/dashboard',
+                      internal: '#'
+                    }
+                    window.open(platformUrls[selectedCampaign.platform] || platformUrls.instantly, '_blank')
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open in {selectedCampaign?.platform === 'instantly' ? 'Instantly' : 'Platform'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

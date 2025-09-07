@@ -38,6 +38,7 @@ export function useAgentMonitoring(options: UseAgentMonitoringOptions = {}) {
 
   const intervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const lastLogCountRef = useRef<Map<string, number>>(new Map())
+  const notifiedAgentsRef = useRef<Set<string>>(new Set()) // Track completed agents to prevent duplicate notifications
 
   // Add agent to monitoring
   const addAgent = useCallback((agent: Agent) => {
@@ -138,13 +139,16 @@ export function useAgentMonitoring(options: UseAgentMonitoringOptions = {}) {
           
           // Check for status changes
           if (oldStatus && oldStatus.status !== status.status) {
-            addToast({
-              type: status.status === 'completed' ? 'success' : 
-                    status.status === 'failed' ? 'error' : 'info',
-              title: `Agent ${batchId}`,
-              message: `Status changed to ${status.status}`,
-              duration: 4000
-            })
+            // Only show completion/failure notification once per agent
+            if ((status.status === 'completed' || status.status === 'failed') && !notifiedAgentsRef.current.has(batchId)) {
+              addToast({
+                type: status.status === 'completed' ? 'success' : 'error',
+                title: `Agent ${agent.query || batchId}`,
+                message: status.status === 'completed' ? 'Agent completed successfully' : 'Agent failed',
+                duration: 5000
+              })
+              notifiedAgentsRef.current.add(batchId)
+            }
             
             if (onStatusChange) {
               onStatusChange(agent, status)

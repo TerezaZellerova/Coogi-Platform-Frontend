@@ -64,41 +64,25 @@ export default function LeadsPage() {
   const loadLeads = async () => {
     setLoading(true)
     try {
-      // Fetch LinkedIn jobs, other jobs, and contacts separately
-      const [linkedinResponse, otherResponse, contactsResponse] = await Promise.all([
-        apiClient.getLinkedInJobs(200),
-        apiClient.getOtherJobs(200),
-        apiClient.getProgressiveContacts(200)
+      // Fetch jobs, contacts, and campaigns using the correct API methods
+      const [jobsResponse, contactsResponse, campaignsResponse] = await Promise.all([
+        apiClient.getLeadJobs(200),
+        apiClient.getLeadContacts(200),
+        apiClient.getLeadCampaigns()
       ])
 
       const combinedLeads: CombinedLead[] = []
 
-      // Add LinkedIn jobs as leads
-      if (linkedinResponse.success) {
-        linkedinResponse.data.forEach((job: ProgressiveJob) => {
+      // Add jobs as leads
+      if (jobsResponse.success) {
+        jobsResponse.data.forEach((job: ProgressiveJob) => {
           combinedLeads.push({
-            id: `linkedin_job_${job.id}`,
+            id: `job_${job.id}`,
             type: 'job',
             title: job.title,
             company: job.company,
             location: job.location,
-            source: 'LinkedIn',
-            url: job.url,
-            created_at: job.created_at
-          })
-        })
-      }
-
-      // Add other jobs as leads
-      if (otherResponse.success) {
-        otherResponse.data.forEach((job: ProgressiveJob) => {
-          combinedLeads.push({
-            id: `other_job_${job.id}`,
-            type: 'job',
-            title: job.title,
-            company: job.company,
-            location: job.location,
-            source: job.site || 'Other',
+            source: job.site || 'Job Portal',
             url: job.url,
             created_at: job.created_at
           })
@@ -124,16 +108,32 @@ export default function LeadsPage() {
         })
       }
 
+      // Add campaigns as leads (if you want to show them as leads)
+      if (campaignsResponse.success) {
+        campaignsResponse.data.forEach((campaign: any) => {
+          combinedLeads.push({
+            id: `campaign_${campaign.id}`,
+            type: 'contact', // Or create a new type 'campaign'
+            title: `Campaign: ${campaign.name}`,
+            company: 'Campaign',
+            source: 'Coogi Campaign',
+            created_at: campaign.created_at
+          })
+        })
+      }
+
       // Sort by creation date (newest first)
       combinedLeads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
       setLeads(combinedLeads)
+      
+      // Update stats
       setStats({
-        jobs: (linkedinResponse.data?.length || 0) + (otherResponse.data?.length || 0),
+        jobs: jobsResponse.data?.length || 0,
         contacts: contactsResponse.data?.length || 0,
         total: combinedLeads.length,
-        linkedinJobs: linkedinResponse.data?.length || 0,
-        otherJobs: otherResponse.data?.length || 0
+        linkedinJobs: 0, // No longer separate LinkedIn jobs
+        otherJobs: jobsResponse.data?.length || 0
       })
 
       if (combinedLeads.length === 0) {

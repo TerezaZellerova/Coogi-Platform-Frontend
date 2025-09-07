@@ -366,7 +366,7 @@ class ApiClient {
   async getSESStats(): Promise<SESStats> {
     try {
       const headers = await this.getAuthHeaders()
-      const response = await fetch(`${this.baseUrl}/api/ses/stats`, {
+      const response = await fetch(`${this.baseUrl}/api/providers/ses/stats`, {
         headers
       })
       

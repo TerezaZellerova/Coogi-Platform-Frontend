@@ -40,6 +40,10 @@ export default function AgentResultsView({ agent, isOpen, onCloseAction }: Agent
   // Check if this is a progressive agent
   const isProgressive = 'staged_results' in agent
   
+  // Check target type for different UI behavior
+  const targetType = isProgressive ? (agent as ProgressiveAgent).target_type : 'hiring_managers'
+  const isJobCandidates = targetType === 'job_candidates'
+  
   // Get totals from agent data
   const totalJobs = isProgressive 
     ? agent.staged_results?.total_jobs || 0
@@ -73,15 +77,22 @@ export default function AgentResultsView({ agent, isOpen, onCloseAction }: Agent
             Agent Results: {agent.query}
           </DialogTitle>
           <DialogDescription>
-            Results from your {isProgressive ? 'progressive' : 'standard'} agent search
+            {isJobCandidates 
+              ? `Professional candidates found for "${agent.query}" role`
+              : `Companies and hiring managers for "${agent.query}" positions`
+            }
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="flex-1 overflow-hidden">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="jobs">Jobs ({totalJobs})</TabsTrigger>
-            <TabsTrigger value="contacts">Contacts ({totalContacts})</TabsTrigger>
+            <TabsTrigger value={isJobCandidates ? "candidates" : "jobs"}>
+              {isJobCandidates ? `Candidates (${totalContacts})` : `Jobs (${totalJobs})`}
+            </TabsTrigger>
+            <TabsTrigger value="contacts">
+              {isJobCandidates ? `Profiles (${totalContacts})` : `Contacts (${totalContacts})`}
+            </TabsTrigger>
             <TabsTrigger value="campaigns">Campaigns ({totalCampaigns})</TabsTrigger>
           </TabsList>
 
@@ -91,26 +102,38 @@ export default function AgentResultsView({ agent, isOpen, onCloseAction }: Agent
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Jobs Found</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {isJobCandidates ? 'Candidates Found' : 'Jobs Found'}
+                  </CardTitle>
                   <Briefcase className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalJobs.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">
+                    {isJobCandidates ? totalContacts.toLocaleString() : totalJobs.toLocaleString()}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {hasRealJobData ? 'Live data available' : 'From multiple job boards'}
+                    {isJobCandidates 
+                      ? (hasRealContactData ? 'Professional profiles' : 'Qualified candidates')
+                      : (hasRealJobData ? 'Live job openings' : 'From multiple job boards')
+                    }
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Contacts Found</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {isJobCandidates ? 'Profiles Enriched' : 'Contacts Found'}
+                  </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalContacts.toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">
-                    {hasRealContactData ? 'Live data available' : 'Verified decision makers'}
+                    {isJobCandidates
+                      ? (hasRealContactData ? 'With contact details' : 'Complete candidate profiles')
+                      : (hasRealContactData ? 'Verified hiring managers' : 'Decision makers')
+                    }
                   </p>
                 </CardContent>
               </Card>
@@ -238,67 +261,139 @@ export default function AgentResultsView({ agent, isOpen, onCloseAction }: Agent
             </Card>
           </TabsContent>
 
-          {/* Jobs Tab */}
-          <TabsContent value="jobs" className="space-y-4 overflow-y-auto max-h-[60vh]">
-            {hasRealJobData ? (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Showing first {Math.min(realJobs.length, 10)} jobs from your agent search:
-                </p>
-                {realJobs.slice(0, 10).map((job: any, index) => (
-                  <Card key={index}>
-                    <CardContent className="pt-4">
-                      <div className="space-y-2">
-                        <h3 className="font-semibold">{job.title || job.job_title || 'Job Title'}</h3>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="w-3 h-3" />
-                            {job.company || job.company_name || 'Company'}
-                          </span>
-                          {job.location && (
+          {/* Jobs/Candidates Tab - Dynamic based on target type */}
+          <TabsContent value={isJobCandidates ? "candidates" : "jobs"} className="space-y-4 overflow-y-auto max-h-[60vh]">
+            {isJobCandidates ? (
+              // Show candidate profiles for job_candidates
+              hasRealContactData ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Showing first {Math.min(realContacts.length, 10)} candidates for "{agent.query}" role:
+                  </p>
+                  {realContacts.slice(0, 10).map((contact: any, index) => (
+                    <Card key={index}>
+                      <CardContent className="pt-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{contact.name || contact.full_name || 'Professional'}</h3>
+                            {contact.verified && <CheckCircle className="w-4 h-4 text-green-500" />}
+                          </div>
+                          <p className="text-sm font-medium text-blue-600">{contact.title || contact.role || agent.query}</p>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {job.location}
+                              <Building2 className="w-3 h-3" />
+                              {contact.company || 'Company'}
                             </span>
+                            {contact.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {contact.location}
+                              </span>
+                            )}
+                          </div>
+                          {contact.email && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Mail className="w-3 h-3" />
+                              {contact.email}
+                            </div>
                           )}
-                          {job.posted_date && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {job.posted_date}
-                            </span>
+                          {contact.experience_years && (
+                            <Badge variant="outline">{contact.experience_years} years experience</Badge>
+                          )}
+                          {contact.source && (
+                            <Badge variant="outline">{contact.source}</Badge>
                           )}
                         </div>
-                        {job.source && (
-                          <Badge variant="outline">{job.source}</Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {realJobs.length > 10 && (
-                  <p className="text-sm text-center text-muted-foreground">
-                    ... and {realJobs.length - 10} more jobs. View all in Lead Database.
-                  </p>
-                )}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {realContacts.length > 10 && (
+                    <p className="text-sm text-center text-muted-foreground">
+                      ... and {realContacts.length - 10} more candidates. View all in Lead Database.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Candidates Found: {totalContacts}</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Your agent found {totalContacts} qualified "{agent.query}" professionals. The detailed candidate profiles are available in the Lead Database.
+                    </p>
+                    <Button 
+                      onClick={() => {
+                        onCloseAction()
+                        router.push('/dashboard?tab=leads')
+                      }}
+                    >
+                      Go to Lead Database
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
             ) : (
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Jobs Found: {totalJobs}</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Your agent successfully found {totalJobs} job opportunities. The detailed job listings are available in the Lead Database section of your dashboard.
+              // Show job listings for hiring_managers
+              hasRealJobData ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Showing first {Math.min(realJobs.length, 10)} jobs from your agent search:
                   </p>
-                  <Button 
-                    onClick={() => {
-                      onCloseAction()
-                      router.push('/dashboard?tab=leads')
-                    }}
-                  >
-                    Go to Lead Database
-                  </Button>
-                </CardContent>
-              </Card>
+                  {realJobs.slice(0, 10).map((job: any, index) => (
+                    <Card key={index}>
+                      <CardContent className="pt-4">
+                        <div className="space-y-2">
+                          <h3 className="font-semibold">{job.title || job.job_title || 'Job Title'}</h3>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Building2 className="w-3 h-3" />
+                              {job.company || job.company_name || 'Company'}
+                            </span>
+                            {job.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {job.location}
+                              </span>
+                            )}
+                            {job.posted_date && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {job.posted_date}
+                              </span>
+                            )}
+                          </div>
+                          {job.source && (
+                            <Badge variant="outline">{job.source}</Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {realJobs.length > 10 && (
+                    <p className="text-sm text-center text-muted-foreground">
+                      ... and {realJobs.length - 10} more jobs. View all in Lead Database.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Jobs Found: {totalJobs}</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Your agent successfully found {totalJobs} job opportunities. The detailed job listings are available in the Lead Database section of your dashboard.
+                    </p>
+                    <Button 
+                      onClick={() => {
+                        onCloseAction()
+                        router.push('/dashboard?tab=leads')
+                      }}
+                    >
+                      Go to Lead Database
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
             )}
           </TabsContent>
 

@@ -55,8 +55,8 @@ export default function LeadManagement() {
     try {
       // Fetch both jobs and contacts from progressive agents
       const [jobsResponse, contactsResponse] = await Promise.all([
-        apiClient.getProgressiveJobs(200),
-        apiClient.getProgressiveContacts(200)
+        apiClient.getLeadJobs(1000), // Increased limit to get all jobs
+        apiClient.getLeadContacts(1000) // Increased limit to get all contacts
       ])
 
       const combinedLeads: CombinedLead[] = []

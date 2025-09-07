@@ -76,36 +76,75 @@ export default function AgentLaunchModal({
     campaigns: []
   })
   
-  const [stages, setStages] = useState<ProgressStage[]>([
-    {
-      id: 'linkedin_fetch',
-      label: 'LinkedIn Job Search',
-      description: 'Finding latest job opportunities on LinkedIn',
-      icon: <Search className="w-4 h-4" />,
-      status: 'pending'
-    },
-    {
-      id: 'other_boards',
-      label: 'Other Job Boards',
-      description: 'Expanding search to Indeed, Glassdoor, and more',
-      icon: <Database className="w-4 h-4" />,
-      status: 'pending'
-    },
-    {
-      id: 'contact_enrichment',
-      label: 'Contact Discovery',
-      description: 'Finding hiring managers and decision makers',
-      icon: <Users className="w-4 h-4" />,
-      status: 'pending'
-    },
-    {
-      id: 'campaign_creation',
-      label: 'Campaign Setup',
-      description: 'Creating personalized outreach campaigns',
-      icon: <Mail className="w-4 h-4" />,
-      status: 'pending'
+  // Dynamic stages based on target type
+  const getStagesForTargetType = (targetType: string): ProgressStage[] => {
+    if (targetType === 'job_candidates') {
+      return [
+        {
+          id: 'candidate_search',
+          label: 'Professional Search',
+          description: 'Finding professionals matching your criteria',
+          icon: <Users className="w-4 h-4" />,
+          status: 'pending'
+        },
+        {
+          id: 'contact_enrichment',
+          label: 'Contact Enrichment',
+          description: 'Gathering contact information and verification',
+          icon: <Mail className="w-4 h-4" />,
+          status: 'pending'
+        },
+        {
+          id: 'profile_analysis',
+          label: 'Profile Analysis',
+          description: 'Analyzing candidate profiles and experience',
+          icon: <Search className="w-4 h-4" />,
+          status: 'pending'
+        },
+        {
+          id: 'campaign_creation',
+          label: 'Campaign Setup',
+          description: 'Creating personalized outreach campaigns',
+          icon: <Rocket className="w-4 h-4" />,
+          status: 'pending'
+        }
+      ]
+    } else {
+      // hiring_managers workflow
+      return [
+        {
+          id: 'linkedin_fetch',
+          label: 'LinkedIn Job Search',
+          description: 'Finding latest job opportunities on LinkedIn',
+          icon: <Search className="w-4 h-4" />,
+          status: 'pending'
+        },
+        {
+          id: 'other_boards',
+          label: 'Other Job Boards',
+          description: 'Expanding search to Indeed, Glassdoor, and more',
+          icon: <Database className="w-4 h-4" />,
+          status: 'pending'
+        },
+        {
+          id: 'contact_enrichment',
+          label: 'Contact Discovery',
+          description: 'Finding hiring managers and decision makers',
+          icon: <Users className="w-4 h-4" />,
+          status: 'pending'
+        },
+        {
+          id: 'campaign_creation',
+          label: 'Campaign Setup',
+          description: 'Creating personalized outreach campaigns',
+          icon: <Mail className="w-4 h-4" />,
+          status: 'pending'
+        }
+      ]
     }
-  ])
+  }
+  
+  const [stages, setStages] = useState<ProgressStage[]>(getStagesForTargetType(formData.targetType))
 
   // Reset modal state when opened/closed
   useEffect(() => {
@@ -115,14 +154,22 @@ export default function AgentLaunchModal({
       setOverallProgress(0)
       setIsCompleted(false)
       setLiveResults({ jobs: [], contacts: [], campaigns: [] })
-      setStages(prev => prev.map(stage => ({ 
+      // Reset stages based on current target type
+      setStages(getStagesForTargetType(formData.targetType).map(stage => ({ 
         ...stage, 
         status: 'pending', 
         resultsCount: undefined, 
         errorMessage: undefined 
       })))
     }
-  }, [isOpen])
+  }, [isOpen, formData.targetType])
+
+  // Update stages when target type changes
+  useEffect(() => {
+    if (!isCreating) {
+      setStages(getStagesForTargetType(formData.targetType))
+    }
+  }, [formData.targetType, isCreating])
 
   // Polling for agent updates
   useEffect(() => {
@@ -220,9 +267,10 @@ export default function AgentLaunchModal({
     setIsCreating(true)
     
     try {
-      // Update first stage to running
+      // Update first stage to running based on target type
+      const firstStageId = formData.targetType === 'job_candidates' ? 'candidate_search' : 'linkedin_fetch'
       setStages(prev => prev.map(stage => 
-        stage.id === 'linkedin_fetch' 
+        stage.id === firstStageId 
           ? { ...stage, status: 'running' }
           : stage
       ))

@@ -169,7 +169,7 @@ export default function AgentsPage() {
         // Create progressive agent for instant LinkedIn results
         const response = await apiClient.createProgressiveAgent(
           enhancedQuery,
-          newAgent.targetType === 'candidates' ? 720 : parseInt(newAgent.hoursOld), // Use 30 days for candidates, user's choice for hiring managers
+          newAgent.targetType === 'job_candidates' ? 720 : parseInt(newAgent.hoursOld), // Use 30 days for candidates, user's choice for hiring managers
           newAgent.customTags.trim() || undefined,
           newAgent.targetType,
           newAgent.companySize,
@@ -192,7 +192,7 @@ export default function AgentsPage() {
         // Start polling for updates with proper cleanup management
         const cleanupPolling = apiClient.pollProgressiveAgent(
           response.agent.id,
-          (updatedAgent) => {
+          (updatedAgent: any) => {
             // Isolated update: only update the specific agent by ID
             setProgressiveAgents(prev => 
               prev.map(agent => agent.id === updatedAgent.id ? updatedAgent : agent)
@@ -200,7 +200,7 @@ export default function AgentsPage() {
             
             // Check for newly completed stages (isolated to this agent)
             Object.entries(updatedAgent.stages).forEach(([stageName, stage]) => {
-              if (stage.status === 'completed' && !previousStages.has(stageName)) {
+              if ((stage as any).status === 'completed' && !previousStages.has(stageName)) {
                 previousStages.add(stageName)
                 
                 const stageLabels: Record<string, string> = {
@@ -212,13 +212,13 @@ export default function AgentsPage() {
                 
                 notifyStageComplete(
                   `${stageLabels[stageName] || stageName} Complete!`,
-                  `Found ${stage.results_count} results`,
+                  `Found ${(stage as any).results_count} results`,
                   updatedAgent.id
                 )
               }
             })
           },
-          (completedAgent) => {
+          (completedAgent: any) => {
             // Isolated completion: only update the specific completed agent
             setProgressiveAgents(prev => 
               prev.map(agent => agent.id === completedAgent.id ? completedAgent : agent)
@@ -239,7 +239,7 @@ export default function AgentsPage() {
             
             console.log('✅ Progressive agent completed:', completedAgent.id)
           },
-          (error) => {
+          (error: any) => {
             console.error('❌ Progressive agent polling error:', error)
             
             // Clean up polling for this agent on error
@@ -555,8 +555,8 @@ export default function AgentsPage() {
                         type="radio"
                         id="targetCandidates"
                         name="targetType"
-                        value="candidates"
-                        checked={newAgent.targetType === 'candidates'}
+                        value="job_candidates"
+                        checked={newAgent.targetType === 'job_candidates'}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, targetType: e.target.value }))}
                         className="text-green-600"
                       />
@@ -582,7 +582,7 @@ export default function AgentsPage() {
                           Job Titles
                         </span>
                       )}
-                      {newAgent.targetType === 'candidates' && (
+                      {newAgent.targetType === 'job_candidates' && (
                         <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded">
                           Professional Roles
                         </span>
@@ -604,7 +604,7 @@ export default function AgentsPage() {
                         Will find companies posting these job types (they need to hire)
                       </p>
                     )}
-                    {newAgent.targetType === 'candidates' && (
+                    {newAgent.targetType === 'job_candidates' && (
                       <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
                         Will find professionals currently in these roles
