@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +24,8 @@ import {
   Eye,
   Calendar,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react'
 import { Agent, ProgressiveAgent } from '@/lib/api-production'
 
@@ -36,50 +37,169 @@ interface AgentResultsViewProps {
 
 export default function AgentResultsView({ agent, isOpen, onCloseAction }: AgentResultsViewProps) {
   const router = useRouter()
+  const [refreshedAgent, setRefreshedAgent] = useState<Agent | ProgressiveAgent>(agent)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [hasAutoRefreshed, setHasAutoRefreshed] = useState(false)
+  
+  // Auto-refresh campaigns seamlessly for completed agents
+  useEffect(() => {
+    if (!isOpen || hasAutoRefreshed) return
+    
+    const currentAgent = refreshedAgent
+    if ('staged_results' in currentAgent && currentAgent.status === 'completed') {
+      const totalCampaigns = currentAgent.staged_results?.total_campaigns || 0
+      const realCampaigns = currentAgent.staged_results?.campaigns || []
+      
+      // If campaigns count doesn't match, auto-refresh seamlessly
+      if (totalCampaigns > 0 && realCampaigns.length === 0) {
+        console.log('🔄 Auto-refreshing campaigns for completed agent...')
+        silentRefresh()
+      }
+    }
+  }, [isOpen, refreshedAgent.status, hasAutoRefreshed])
+  
+  // Silent refresh for seamless UX
+  const silentRefresh = async () => {
+    if (!('staged_results' in agent) || hasAutoRefreshed) return
+    
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'
+      const response = await fetch(`${apiBase}/api/agents/progressive/${agent.id}`)
+      const data = await response.json()
+      
+      if (data.agent) {
+        setRefreshedAgent(data.agent)
+        setHasAutoRefreshed(true)
+        console.log('✅ Campaigns auto-synchronized for client')
+      }
+    } catch (error) {
+      console.error('❌ Silent refresh failed:', error)
+    }
+  }
+  
+  // Manual refresh for debugging (hidden from client by default)
+  const forceRefresh = async () => {
+    if (!('staged_results' in agent)) return
+    
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'
+    console.log('🔄 Force refresh - API Base:', apiBase)
+    console.log('🔄 Force refresh - Agent ID:', agent.id)
+    
+    setIsRefreshing(true)
+    try {
+      const url = `${apiBase}/api/agents/progressive/${agent.id}`
+      console.log('🔄 Fetching from URL:', url)
+      
+      const response = await fetch(url)
+      console.log('🔄 Response status:', response.status)
+      
+      const data = await response.json()
+      console.log('🔄 Response data:', data)
+      
+      if (data.agent) {
+        setRefreshedAgent(data.agent)
+        setHasAutoRefreshed(true)
+        console.log('✅ Agent data refreshed - campaigns:', data.agent.staged_results?.campaigns)
+        console.log('✅ Total campaigns:', data.agent.staged_results?.total_campaigns)
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh agent:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+  
+  // Use refreshed data if available
+  const currentAgent = refreshedAgent
   
   // Check if this is a progressive agent
-  const isProgressive = 'staged_results' in agent
+  const isProgressive = 'staged_results' in currentAgent
   
   // Check target type for different UI behavior
-  const targetType = isProgressive ? (agent as ProgressiveAgent).target_type : 'hiring_managers'
+  const targetType = isProgressive ? (currentAgent as ProgressiveAgent).target_type : 'hiring_managers'
   const isJobCandidates = targetType === 'job_candidates'
   
   // Get totals from agent data
   const totalJobs = isProgressive 
-    ? agent.staged_results?.total_jobs || 0
-    : agent.total_jobs_found || 0
+    ? currentAgent.staged_results?.total_jobs || 0
+    : currentAgent.total_jobs_found || 0
     
   const totalContacts = isProgressive
-    ? agent.staged_results?.total_contacts || 0
-    : agent.total_emails_found || 0
+    ? currentAgent.staged_results?.total_contacts || 0
+    : currentAgent.total_emails_found || 0
     
   const totalCampaigns = isProgressive
-    ? agent.staged_results?.total_campaigns || 0
+    ? currentAgent.staged_results?.total_campaigns || 0
     : 0
 
   // Get real data arrays if available
   const realJobs = isProgressive 
-    ? [...(agent.staged_results?.linkedin_jobs || []), ...(agent.staged_results?.other_jobs || [])]
+    ? [...(currentAgent.staged_results?.linkedin_jobs || []), ...(currentAgent.staged_results?.other_jobs || [])]
     : []
-  const realContacts = isProgressive ? agent.staged_results?.verified_contacts || [] : []
-  const realCampaigns = isProgressive ? agent.staged_results?.campaigns || [] : []
+  const realContacts = isProgressive ? currentAgent.staged_results?.verified_contacts || [] : []
+  const realCampaigns = isProgressive ? currentAgent.staged_results?.campaigns || [] : []
 
   const hasRealJobData = realJobs.length > 0
   const hasRealContactData = realContacts.length > 0
   const hasRealCampaignData = realCampaigns.length > 0
 
+  // Debug log for campaigns
+  console.log('🐛 Frontend Debug - Campaign Data:', {
+    agentId: currentAgent.id,
+    isProgressive,
+    totalCampaigns,
+    realCampaigns,
+    hasRealCampaignData,
+    staged_results: currentAgent.staged_results,
+    campaigns_raw: isProgressive ? currentAgent.staged_results?.campaigns : 'not progressive'
+  })
+  
+  // Additional debug for campaign detection logic
+  if (isProgressive && totalCampaigns > 0) {
+    console.log('🎯 CAMPAIGN DETECTION:')
+    console.log('  ✅ Is Progressive Agent')
+    console.log('  ✅ Total Campaigns > 0:', totalCampaigns)
+    console.log('  📊 Real Campaigns Array:', realCampaigns)
+    console.log('  🔍 Has Real Campaign Data:', hasRealCampaignData)
+    console.log('  📝 Should show campaigns?', hasRealCampaignData ? 'YES' : 'NO (showing fallback)')
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onCloseAction}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Eye className="w-5 h-5" />
-            Agent Results: {agent.query}
+          <DialogTitle className="flex items-center gap-2 justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Agent Results: {currentAgent.query}
+            </div>
+            {/* Only show refresh button in development mode */}
+            {isProgressive && process.env.NODE_ENV === 'development' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={forceRefresh} 
+                disabled={isRefreshing}
+                className="ml-2"
+              >
+                {isRefreshing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-4 h-4 mr-2" />
+                    Refresh Data
+                  </>
+                )}
+              </Button>
+            )}
           </DialogTitle>
           <DialogDescription>
             {isJobCandidates 
-              ? `Professional candidates found for "${agent.query}" role`
-              : `Companies and hiring managers for "${agent.query}" positions`
+              ? `Professional candidates found for "${currentAgent.query}" role`
+              : `Companies and hiring managers for "${currentAgent.query}" positions`
             }
           </DialogDescription>
         </DialogHeader>
@@ -458,22 +578,55 @@ export default function AgentResultsView({ agent, isOpen, onCloseAction }: Agent
             {hasRealCampaignData ? (
               <div className="space-y-3">
                 {realCampaigns.map((campaign: any, index) => (
-                  <Card key={index}>
+                  <Card key={campaign.campaign_id || index}>
                     <CardContent className="pt-4">
                       <div className="space-y-2">
-                        <h3 className="font-semibold">{campaign.name || `Campaign ${index + 1}`}</h3>
-                        <p className="text-sm text-muted-foreground">{campaign.description || 'Email campaign'}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{campaign.status || 'Ready'}</Badge>
+                        <h3 className="font-semibold">
+                          {campaign.campaign_name || campaign.name || `Campaign ${index + 1}`}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {campaign.search_type ? `${campaign.search_type.toUpperCase()} Campaign` : 'Email campaign'}
+                          {campaign.auto_campaign && ' (Auto-created)'}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline">
+                            {campaign.send_scheduled ? 'Scheduled' : campaign.status || 'Ready'}
+                          </Badge>
                           <span className="text-sm text-muted-foreground">
-                            {campaign.contact_count || 0} contacts
+                            {campaign.target_count || campaign.contact_count || 0} contacts
                           </span>
+                          {campaign.verified_count && (
+                            <span className="text-sm text-green-600">
+                              {campaign.verified_count} verified
+                            </span>
+                          )}
+                          {campaign.send_delay_hours && (
+                            <span className="text-xs text-muted-foreground">
+                              Delay: {campaign.send_delay_hours}h
+                            </span>
+                          )}
                         </div>
+                        {campaign.created_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Created: {new Date(campaign.created_at).toLocaleString()}
+                          </p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
+            ) : totalCampaigns > 0 && !hasAutoRefreshed ? (
+              // Show loading state when campaigns exist but aren't loaded yet
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <Loader2 className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
+                  <h3 className="text-lg font-semibold mb-2">Loading Campaign Details...</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Synchronizing {totalCampaigns} campaign{totalCampaigns > 1 ? 's' : ''} with latest data...
+                  </p>
+                </CardContent>
+              </Card>
             ) : totalCampaigns > 0 ? (
               <Card>
                 <CardContent className="pt-6 text-center">
