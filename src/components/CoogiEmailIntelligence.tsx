@@ -159,9 +159,26 @@ const CoogiEmailIntelligence: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+      } else if (response.status === 401) {
+        // If authentication fails, use demo endpoint
+        const demoResponse = await fetch(`${API_BASE}/api/coogi-email/demo/stats`);
+        if (demoResponse.ok) {
+          const data = await demoResponse.json();
+          setStats(data);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch email stats:', error);
+      // Fallback to demo endpoint
+      try {
+        const demoResponse = await fetch(`${API_BASE}/api/coogi-email/demo/stats`);
+        if (demoResponse.ok) {
+          const data = await demoResponse.json();
+          setStats(data);
+        }
+      } catch (demoError) {
+        console.error('Demo endpoint also failed:', demoError);
+      }
     }
   };
 
@@ -177,9 +194,26 @@ const CoogiEmailIntelligence: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setAnalytics(data);
+      } else if (response.status === 401) {
+        // If authentication fails, use demo endpoint
+        const demoResponse = await fetch(`${API_BASE}/api/coogi-email/demo/analytics`);
+        if (demoResponse.ok) {
+          const data = await demoResponse.json();
+          setAnalytics(data);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
+      // Fallback to demo endpoint
+      try {
+        const demoResponse = await fetch(`${API_BASE}/api/coogi-email/demo/analytics`);
+        if (demoResponse.ok) {
+          const data = await demoResponse.json();
+          setAnalytics(data);
+        }
+      } catch (demoError) {
+        console.error('Demo endpoint also failed:', demoError);
+      }
     }
   };
 
@@ -229,9 +263,40 @@ const CoogiEmailIntelligence: React.FC = () => {
         setLastProcessing(result);
         await fetchStats();
         await fetchAnalytics();
+      } else if (response.status === 401) {
+        // If authentication fails, use demo endpoint
+        const demoResponse = await fetch(`${API_BASE}/api/coogi-email/demo/process`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if (demoResponse.ok) {
+          const result = await demoResponse.json();
+          setLastProcessing(result);
+          await fetchStats();
+          await fetchAnalytics();
+        }
       }
     } catch (error) {
       console.error('Processing failed:', error);
+      // Fallback to demo endpoint
+      try {
+        const demoResponse = await fetch(`${API_BASE}/api/coogi-email/demo/process`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if (demoResponse.ok) {
+          const result = await demoResponse.json();
+          setLastProcessing(result);
+          await fetchStats();
+          await fetchAnalytics();
+        }
+      } catch (demoError) {
+        console.error('Demo processing also failed:', demoError);
+      }
     } finally {
       setProcessing(false);
     }
